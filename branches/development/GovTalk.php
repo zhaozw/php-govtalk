@@ -24,7 +24,7 @@
  * GovTalk messages for use with the UK government's GovTalk messaging system
  * (http://www.govtalk.gov.uk/). A generic wrapper designed to be extended for
  * use with the more specific interfaces provided by various government
- * departments.
+ * departments. Generates valid GovTalk envelopes for agreed version 2.0.
  *
  * Known limitations: No support for GovTalkDetails->Keys.
  *
@@ -33,6 +33,8 @@
  * @licence http://www.gnu.org/licenses/gpl-3.0.txt GNU General Public License
  */
 class GovTalk {
+
+public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 
 	/**
 	 * GovTalk server.
@@ -66,6 +68,12 @@ class GovTalk {
 	 * @var string
 	 */
 	private $_messageQualifier;
+	/**
+	 * GovTalk message authentication type.
+	 *
+	 * @var string
+	 */
+	private $_messageAuthType;
 
 	/**
 	 * Body of the message to be sent.
@@ -151,7 +159,7 @@ class GovTalk {
 	/**
 	 * Sets the message Qualifier for use in MessageDetails header.  The
 	 * Qualifier may be one of 'request', 'acknowledgement', 'response', 'poll'
-	 * or 'error'. Any other values will not be set and return false.
+	 * or 'error'. Any other values will not be set and will return false.
 	 *
 	 * @param string $messageQualifier The qualifier to set.
 	 * @return boolean True if the Qualifier is valid and set, false if it's invalid (and therefore not set).
@@ -172,6 +180,31 @@ class GovTalk {
 			break;
 		}
 
+	}
+	
+	/**
+	 * Sets the type of authentication to use for with the message.  The message
+	 * type must be one of 'clear', 'CHMD5', 'MD5' or 'W3Csigned'.  Any other
+	 * values will not be set and will return false.
+	 *
+	 * @param string $messageAuthType The type of authentication to set.
+	 * @return boolean True if the authentication type is valid and set, false if it's invalid (and therefore not set).
+	 */
+	public function setMessageAuthentication($messageAuthType) {
+	
+		switch ($messageAuthType) {
+			case 'clear':
+			case 'CHMD5':
+			case 'MD5':
+			case 'W3Csigned':
+				$this->_messageAuthType = $messageAuthType;
+				return true;
+			break;
+			default:
+				return false;
+			break;
+		}
+	
 	}
 
 	/**
@@ -202,56 +235,63 @@ class GovTalk {
 	 // Firstly check we have everything we need to build the envelope...
 		if (isset($this->_messageClass) && isset($this->_messageQualifier)) {
 			if (isset($this->_govTalkSenderId) && isset($this->_govTalkPassword)) {
+				if (isset($this->_messageAuthType)) {
 	 // Generate the transaction ID...
 				$transactionId = $this->_generateTransactionId();
-				$authenticationToken = $this->_generateAuthenticationDetails($transactionId);
-				if (isset($this->_messageBody)) {
+					if (isset($this->_messageBody)) {
 	 // Create the XML document (in memory)...
-					$package = new XMLWriter();
-					$package->openMemory();
-					$package->setIndent(true);
+						$package = new XMLWriter();
+						$package->openMemory();
+						$package->setIndent(true);
 
-					$package->startElement('GovTalkMessage');
-					$xsiSchemaLocation = 'http://www.govtalk.gov.uk/CM/envelope';
-					if ($this->_additionalXsiSchemaLocation !== null) {
-						$xsiSchemaLocation .= ' http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd';
-					}
-					//$package->writeAttribute('xsi:schemaLocation', $xsiSchemaLocation);
-					$package->writeAttributeNS('xsi', 'schemaLocation', 'http://www.w3.org/2001/XMLSchema-instance', $xsiSchemaLocation);
-						$package->writeElement('EnvelopeVersion', '1.0');
+						$package->startElement('GovTalkMessage');
+						$xsiSchemaLocation = 'http://www.govtalk.gov.uk/documents/envelope-v2-0.xsd';
+						if ($this->_additionalXsiSchemaLocation !== null) {
+							$xsiSchemaLocation .= ' http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd';
+						}
+						$package->writeAttributeNS('xsi', 'schemaLocation', 'http://www.w3.org/2001/XMLSchema-instance', $xsiSchemaLocation);
+							$package->writeElement('EnvelopeVersion', '1.0');
 	 // Header...
-						$package->startElement('Header');
-							$package->startElement('MessageDetails');
-								$package->writeElement('Class', $this->_messageClass);
-								$package->writeElement('Qualifier', $this->_messageQualifier);
-								$package->writeElement('TransactionID', $transactionId);
-							$package->endElement(); # MessageDetails
-						$package->endElement(); # Header
+							$package->startElement('Header');
+								$package->startElement('MessageDetails');
+									$package->writeElement('Class', $this->_messageClass);
+									$package->writeElement('Qualifier', $this->_messageQualifier);
+									$package->writeElement('TransactionID', $transactionId);
+								$package->endElement(); # MessageDetails
+							$package->endElement(); # Header
 
 	 // Authentication...
-						$package->startElement('SenderDetails');
-							$package->startElement('IDAuthentication');
-								$package->writeElement('SenderID', $this->_govTalkSenderId);
-								$package->startElement('Authentication');
-									$package->writeElement('Method', 'CHMD5');
-									$package->writeElement('Value', $authenticationToken);
-								$package->endElement(); # Authentication
-							$package->endElement(); # IDAuthentication
-						$package->endElement(); # SenderDetails
+						switch ($this->_messageAuthType) {
+							case 'CHMD5':
+								$authenticationToken = $this->_generateCHMD5Authentication($transactionId);
+								$package->startElement('SenderDetails');
+									$package->startElement('IDAuthentication');
+										$package->writeElement('SenderID', $this->_govTalkSenderId);
+										$package->startElement('Authentication');
+											$package->writeElement('Method', 'CHMD5');
+											$package->writeElement('Value', $authenticationToken);
+										$package->endElement(); # Authentication
+									$package->endElement(); # IDAuthentication
+								$package->endElement(); # SenderDetails
+							break;
+						}
 
 	 // Body...
-						$package->startElement('Body');
-						if (is_string($this->_messageBody)) {
-							$package->writeRaw($this->_messageBody);
-						} else if (is_a($this->_messageBody, 'XMLWriter')) {
-							$package->writeRaw($this->_messageBody->outputMemory());
-						}
-						$package->endElement(); # Body
+							$package->startElement('Body');
+							if (is_string($this->_messageBody)) {
+								$package->writeRaw($this->_messageBody);
+							} else if (is_a($this->_messageBody, 'XMLWriter')) {
+								$package->writeRaw($this->_messageBody->outputMemory());
+							}
+							$package->endElement(); # Body
 
-					$package->endElement(); # GovTalkMessage
+						$package->endElement(); # GovTalkMessage
 
 	 // Flush the buffer as the return of this function...
-					return $package->flush();
+						return $package->flush();
+					} else {
+						return false;
+					}
 				} else {
 					return false;
 				}
@@ -287,7 +327,7 @@ class GovTalk {
 	 * @param string $transactionId Transaction ID to use generating the token.
 	 * @return mixed The authentication token, or false on failure.
 	 */
-	private function _generateAuthenticationDetails($transactionId) {
+	private function _generateCHMD5Authentication($transactionId) {
 
 		if (is_numeric($transactionId)) {
 			return md5($this->_govTalkSenderId.$this->_govTalkPassword.$transactionId);
