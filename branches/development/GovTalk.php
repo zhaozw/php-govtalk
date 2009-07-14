@@ -74,6 +74,14 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @var string
 	 */
 	private $_messageFunction = null;
+	
+	/**
+	 * GovTalk message CorrelationID.
+	 *
+	 * @var string
+	 */
+	private $_messageCorrelationId = null;
+	
 	/**
 	 * GovTalk message authentication type.
 	 *
@@ -198,6 +206,19 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	
 	 // TODO: Limit the possible values for Function.
 		$this->_messageFunction = $messageFunction;
+
+	}
+	
+	/**
+	 * Sets the message CorrelationID for use in MessageDetails header.
+	 *
+	 * @param string $messageCorrelationId The correlation ID to set.
+	 * @return boolean True if the CorrelationID is valid and set, false if it's invalid (and therefore not set).
+	 */
+	public function setMessageCorrelationId($messageCorrelationId) {
+
+	 // TODO: Track message correlation ids internally?
+		$this->_messageCorrelationId = $messageCorrelationId;
 
 	}
 	
