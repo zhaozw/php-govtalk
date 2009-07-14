@@ -206,6 +206,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	
 	 // TODO: Limit the possible values for Function.
 		$this->_messageFunction = $messageFunction;
+		return true;
 
 	}
 	
@@ -218,7 +219,12 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	public function setMessageCorrelationId($messageCorrelationId) {
 
 	 // TODO: Track message correlation ids internally?
-		$this->_messageCorrelationId = $messageCorrelationId;
+		if (strlen($messageCorrelationId) <= 32) {
+			$this->_messageCorrelationId = $messageCorrelationId;
+			return true;
+		} else {
+			return false;
+		}
 
 	}
 	
@@ -304,6 +310,9 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 										$package->writeElement('Function', $this->_messageFunction);
 									}
 									$package->writeElement('TransactionID', $transactionId);
+									if ($this->_messageCorrelationId !== null) {
+										$package->writeElement('CorrelationID', $this->_messageCorrelationId);
+									}
 								$package->endElement(); # MessageDetails
 								
 	 // Sender details...
