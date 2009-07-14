@@ -26,8 +26,6 @@
  * use with the more specific interfaces provided by various government
  * departments. Generates valid GovTalk envelopes for agreed version 2.0.
  *
- * Known limitations: No support for GovTalkDetails->Keys.
- *
  * @author Jonathon Wardman
  * @copyright 2009, Fubra Limited
  * @licence http://www.gnu.org/licenses/gpl-3.0.txt GNU General Public License
@@ -42,6 +40,13 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @var string
 	 */
 	private $_govTalkServer;
+	
+	/**
+	 * GovTalk test flag.  Default is 0, a real message.
+	 *
+	 * @var string
+	 */
+	private $_govTalkTest = '0';
 
 	/**
 	 * GovTalk sender ID.
@@ -69,14 +74,13 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 */
 	private $_messageQualifier;
 	/**
-	 * GovTalk message Function.
+	 * GovTalk message Function.  Default is null, no specified function.
 	 *
 	 * @var string
 	 */
 	private $_messageFunction = null;
-	
 	/**
-	 * GovTalk message CorrelationID.
+	 * GovTalk message CorrelationID.  Default is null, no correlation ID.
 	 *
 	 * @var string
 	 */
@@ -97,7 +101,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	private $_messageBody;
 
 	/**
-	 * Additional XSI SchemaLocation URL.
+	 * Additional XSI SchemaLocation URL.  Default is null, no additional schema.
 	 *
 	 * @var string
 	 */
@@ -131,6 +135,34 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	public function getLastTransactionId() {
 
 		return $this->_lastTransactionId;
+
+	}
+
+	/**
+	 * Sets the test flag.  A flag value of true tells the Gateway this message
+	 * is a test, false (default) tells it this is a live message.
+	 *
+	 * @param boolean $testFlag The value to set the test flag to.
+	 * @return boolean True if the flag is set successfully, false otherwise.
+	 */
+	public function setTestFlag($testFlag) {
+	
+	if (is_bool($testFlag)) {
+		if ($testFlag === true) {
+			$this->_govTalkTest = '1';
+		} else {
+			$this->_govTalkTest = '0';
+		}
+	} else {
+		return false;
+	}
+	
+		if (is_string($messageBody) || is_a($messageBody, 'XMLWriter')) {
+			$this->_messageBody = $messageBody;
+			return true;
+		} else {
+			return false;
+		}
 
 	}
 
@@ -313,6 +345,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 									if ($this->_messageCorrelationId !== null) {
 										$package->writeElement('CorrelationID', $this->_messageCorrelationId);
 									}
+									$package->writeElement('GatewayTest', $this->_govTalkTest);
 								$package->endElement(); # MessageDetails
 								
 	 // Sender details...
