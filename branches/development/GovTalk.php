@@ -34,20 +34,14 @@ class GovTalk {
 
 public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 
+ /* Server related variables. */
+ 
 	/**
 	 * GovTalk server.
 	 *
 	 * @var string
 	 */
 	private $_govTalkServer;
-	
-	/**
-	 * GovTalk test flag.  Default is 0, a real message.
-	 *
-	 * @var string
-	 */
-	private $_govTalkTest = '0';
-
 	/**
 	 * GovTalk sender ID.
 	 *
@@ -60,6 +54,29 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @var string
 	 */
 	private $_govTalkPassword;
+
+ /* General envelope related variables. */
+ 
+	/**
+	 * Additional XSI SchemaLocation URL.  Default is null, no additional schema.
+	 *
+	 * @var string
+	 */
+	private $_additionalXsiSchemaLocation = null;
+	/**
+	 * GovTalk test flag.  Default is 0, a real message.
+	 *
+	 * @var string
+	 */
+	private $_govTalkTest = '0';
+	/**
+	 * Body of the message to be sent.
+	 *
+	 * @var mixed Can either be of type XMLWriter, or a string.
+	 */
+	private $_messageBody;
+
+ /* MessageDetails related variables */
 
 	/**
 	 * GovTalk message Class.
@@ -86,6 +103,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 */
 	private $_messageCorrelationId = null;
 	
+ /* SenderDetails related variables. */
+	
 	/**
 	 * GovTalk message authentication type.
 	 *
@@ -93,19 +112,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 */
 	private $_messageAuthType;
 
-	/**
-	 * Body of the message to be sent.
-	 *
-	 * @var mixed Can either be of type XMLWriter, or a string.
-	 */
-	private $_messageBody;
-
-	/**
-	 * Additional XSI SchemaLocation URL.  Default is null, no additional schema.
-	 *
-	 * @var string
-	 */
-	private $_additionalXsiSchemaLocation = null;
+ /* System / internal variables. */
 
 	/**
 	 * Transaction ID of the last message sent.
@@ -113,6 +120,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @var string
 	 */
 	private $_lastTransactionId = null;
+
+ /* Magic methods. */
 
 	/**
 	 * Instance constructor.
@@ -127,6 +136,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 
 	}
 
+ /* Get methods. */
+
 	/**
 	 * Returns the transaction ID used in the last message sent.
 	 *
@@ -135,6 +146,25 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	public function getLastTransactionId() {
 
 		return $this->_lastTransactionId;
+
+	}
+
+ /* General envelope related set methods. */
+
+	/**
+	 * An additional SchemaLocation for use in the GovTalk headers.  This URL
+	 * should be the location of an additional xsd defining the body segment.
+	 *
+	 * @param string $schemaLocation URL location of additional xsd.
+	 * @return boolean True if the URL is valid and set, false if it's invalid (and therefore not set).
+	 */
+	public function setSchemaLocation($schemaLocation) {
+
+		if (preg_match('/^https?:\/\/[\w-.]+\.gov\.uk/', $schemaLocation)) {
+			$this->_additionalXsiSchemaLocation = $schemaLocation;
+		} else {
+			return false;
+		}
 
 	}
 
@@ -147,19 +177,12 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 */
 	public function setTestFlag($testFlag) {
 	
-	if (is_bool($testFlag)) {
-		if ($testFlag === true) {
-			$this->_govTalkTest = '1';
-		} else {
-			$this->_govTalkTest = '0';
-		}
-	} else {
-		return false;
-	}
-	
-		if (is_string($messageBody) || is_a($messageBody, 'XMLWriter')) {
-			$this->_messageBody = $messageBody;
-			return true;
+		if (is_bool($testFlag)) {
+			if ($testFlag === true) {
+				$this->_govTalkTest = '1';
+			} else {
+				$this->_govTalkTest = '0';
+			}
 		} else {
 			return false;
 		}
@@ -184,6 +207,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 		}
 
 	}
+
+ /* MessageDetails related set methods. */
 
 	/**
 	 * Sets the message Class for use in MessageDetails header.
@@ -260,6 +285,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 
 	}
 	
+ /* SenderDetails related methods. */
+	
 	/**
 	 * Sets the type of authentication to use for with the message.  The message
 	 * type must be one of 'clear', 'CHMD5', 'MD5' or 'W3Csigned'.  Any other
@@ -284,23 +311,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 		}
 	
 	}
-
-	/**
-	 * An additional SchemaLocation for use in the GovTalk headers.  This URL
-	 * should be the location of an additional xsd defining the body segment.
-	 *
-	 * @param string $schemaLocation URL location of additional xsd.
-	 * @return boolean True if the URL is valid and set, false if it's invalid (and therefore not set).
-	 */
-	public function setSchemaLocation($schemaLocation) {
-
-		if (preg_match('/^https?:\/\/[\w-.]+\.gov\.uk/', $schemaLocation)) {
-			$this->_additionalXsiSchemaLocation = $schemaLocation;
-		} else {
-			return false;
-		}
-
-	}
+	
+ /* Protected methods. */
 
 	/**
 	 * Sends the message currently stored in the object to the currently defined
@@ -396,6 +408,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 		}
 
 	}
+	
+ /* Private methods. */
 
 	/**
 	 * Generates the transaction ID required for GovTalk authentication. Although
