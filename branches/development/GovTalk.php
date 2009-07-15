@@ -117,6 +117,14 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @var string
 	 */
 	private $_messageAuthType;
+	
+ /* Keys related variables. */
+	/**
+	 * GovTalk keys array.
+	 *
+	 * @var array
+	 */
+	private $_govTalkKeys = array();
 
  /* System / internal variables. */
 
@@ -291,7 +299,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 
 	}
 	
- /* SenderDetails related methods. */
+ /* SenderDetails related set methods. */
 
 	/**
 	 * Sets the sender email address for use in SenderDetails header.  Note: the
@@ -334,6 +342,72 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 				return false;
 			break;
 		}
+	
+	}
+	
+ /* Keys related methods. */
+	
+	/**
+	 * Add a key-value pair to the set of keys to be sent with the message as
+	 * part of the GovTalkDetails element.
+	 *
+	 * @param string $keyType The key type (type attribute).
+	 * @param string $keyValue The key value.
+	 * @return boolean True if the key is valid and added, false if it's not valid (and therefore not added).
+	 */
+	public function addMessageKey($keyType, $keyValue) {
+	
+		if (is_string($keyType) && is_string($keyValue)) {
+			$this->_govTalkKeys[] = array('type' => $keyType,
+			                              'value' => $keyValue);
+			return true;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Removed a key-value pair from the set of keys to be sent with the message
+	 * as part of the GovTalkDetails element.
+	 *
+	 * Searching is done primarily on key type (type attribute) and all keys with
+	 * a corresponding type attribute are deleted.  An optional value argument
+	 * can be provided, and in these cases only keys with matching key type AND
+	 * key value will be deleted (but again all keys which meeting these
+	 * criterion will be deleted).
+	 *
+	 * @param string $keyType The key type (type attribute) to be deleted.
+	 * @param string $keyValue The key value to be deleted.
+	 * @return integer The number of keys deleted.
+	 */
+	public function deleteMessageKey($keyType, $keyValue = null) {
+	
+		$deletedCount = 0;
+		$possibleMatches = array();
+		foreach ($this->_govTalkKeys AS $arrayKey => $value) {
+			if ($value['type'] == $keyType) {
+				if (($keyValue !== null) && ($keyValue !== $value['value'])) {
+					continue;
+				}
+				$deletedCount++;
+				unset($this->_govTalkKeys[$arrayKey]);
+			}
+		}
+		
+		return $deletedCount;
+	
+	}
+	
+	/**
+	 * Removes all GovTalkDetails Key key-value pairs.
+	 *
+	 * @return boolean Always returns true.
+	 */
+	public function resetMessageKeys() {
+	
+		$this->_govTalkKeys = array();
+		return true;
 	
 	}
 	
@@ -392,19 +466,39 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 								switch ($this->_messageAuthType) {
 									case 'CHMD5':
 										$authenticationToken = $this->_generateCHMD5Authentication($transactionId);
-											$package->startElement('IDAuthentication');
-												$package->writeElement('SenderID', $this->_govTalkSenderId);
-												$package->startElement('Authentication');
-													$package->writeElement('Method', 'CHMD5');
-													$package->writeElement('Value', $authenticationToken);
-												$package->endElement(); # Authentication
-											$package->endElement(); # IDAuthentication
+										$package->startElement('IDAuthentication');
+											$package->writeElement('SenderID', $this->_govTalkSenderId);
+											$package->startElement('Authentication');
+												$package->writeElement('Method', 'CHMD5');
+												$package->writeElement('Value', $authenticationToken);
+											$package->endElement(); # Authentication
+										$package->endElement(); # IDAuthentication
+										if ($this->_senderEmailAddress !== null) {
+											$package->writeElement('EmailAddress', $this->_senderEmailAddress);
+										}
 									break;
 								}
 						
 								$package->endElement(); # SenderDetails
 						
 							$package->endElement(); # Header
+							
+	 // GovTalk details...
+							$package->startElement('GovTalkDetails');
+							
+	 // Keys...
+							if (count($this->_govTalkKeys) > 0) {
+								$package->startElement('Keys');
+								foreach ($this->_govTalkKeys AS $keyPair) {
+									$package->startElement('Key');
+										$package->writeAttribute('type', $keyPair['type']);
+										$package->text($keyPair['value']);
+									$package->endElement(); # Key
+								}
+								$package->endElement(); # Keys
+							}
+							
+							$package->endElement(); # GovTalkDetails
 
 	 // Body...
 							$package->startElement('Body');
