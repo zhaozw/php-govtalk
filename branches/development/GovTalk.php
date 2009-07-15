@@ -143,7 +143,13 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 */
 	private $_lastTransactionId = null;
 	
- /* Return data variables. */
+ /* Request/response data variables. */
+	/**
+	 * Full request data in string format (raw XML).
+	 *
+	 * @var string
+	 */
+	private $_fullRequestString;
 	/**
 	 * Full return data in string format (raw XML).
 	 *
@@ -180,6 +186,22 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	public function getLastTransactionId() {
 
 		return $this->_lastTransactionId;
+
+	}
+
+	/**
+	 * Returns the full XML request from the last Gateway request, if there is
+	 * one.
+	 *
+	 * @return mixed The full text request from the Gateway, or false if this isn't set.
+	 */
+	public function getFullXMLRequest() {
+
+		if (isset($this->_fullRequestString)) {
+			return $this->_fullRequestString;
+		} else {
+			return false;
+		}
 
 	}
 	
@@ -518,18 +540,19 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 */
 	public function sendMessage() {
 	
+		$this->_fullRequestString = $this->_packageGovTalkEnvelope();
 	   if (function_exists('curl_init')) {
 			$curlHandle = curl_init($this->_govTalkServer);
 			curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
 			curl_setopt($curlHandle, CURLOPT_RETURNTRANSFER, 1);
 			curl_setopt($curlHandle, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($curlHandle, CURLOPT_POSTFIELDS, $this->_packageGovTalkEnvelope());
+			curl_setopt($curlHandle, CURLOPT_POSTFIELDS, $this->_fullRequestString);
 			$gatewayResponse = curl_exec($curlHandle);
 			curl_close($curlHandle);
 		} else {
 			$streamOptions = array('http' => array('method' => 'POST',
 			                                       'header' => 'Content-Type: text/xml',
-			                                       'content' => $this->_packageGovTalkEnvelope()));
+			                                       'content' => $this->_fullRequestString));
 			if ($fileHandle = @fopen($this->_govTalkServer, 'r', false, stream_context_create($streamOptions))) {
 				$gatewayResponse = stream_get_contents($fileHandle);
 			} else {
