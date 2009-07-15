@@ -125,6 +125,14 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @var array
 	 */
 	private $_govTalkKeys = array();
+	
+ /* Channel routing related variables. */
+	/**
+	 * GovTalk message channel routing array.
+	 *
+	 * @var array
+	 */
+	private $_messageChannelRouting = array();
 
  /* System / internal variables. */
 
@@ -345,6 +353,61 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	
 	}
 	
+ /* Channel routing related methods. */
+
+	/**
+	 * Adds a channel routing element to the message.  Channel routes should be
+	 * added in order by every application which the message has passed through
+	 * prior to being sent to the Gateway.  php-govtalk does not support name
+	 * elements in channel routing.  If not defined the timestamp element will
+	 * automatically be added at the moment the route is added.  Any optional
+	 * arguments may be skipped by passing null as that argument.
+	 *
+	 * Applications using php-govtalk should <i>always</i> add at least one
+	 * additional channel route before sending a message to the Gateway.
+	 *
+	 * Note: php-govtalk will add itself as the last route in the chain.  This
+	 * is to identify the library to the Gateway and to assist in tracking down
+	 * issues caused by the library itself.
+	 *
+	 * @param string $uri The URI of the owner of the process being added to the route.
+	 * @param string $softwareName The name of the software generating this route entry.
+	 * @param string $softwareVersion The version number of the software generating this route entry.
+	 * @param array $id An array of IDs (themselves array of 'type' and 'value') to add as array elements.
+	 * @param string $timestamp A timestamp representing the time this route processed the message (xsd:dateTime format).
+	 * @return boolean True if the route is valid and added, false if it's not valid (and therefore not added).
+	 */
+	public function addChannelRoute($uri, $softwareName = null, $softwareVersion = null, array $id = null, $timestamp = null) {
+	
+		if (is_string($uri)) {
+			$newRoute = array('uri' => $uri);
+			if ($softwareName !== null) {
+				$newRoute['product'] = $softwareName;
+			}
+			if ($softwareVersion !== null) {
+				$newRoute['version'] = $softwareVersion;
+			}
+			if ($id !== null && is_array($id)) {
+				foreach ($id AS $idElement) {
+					if (is_array($idElement)) {
+						$newRoute['id'][] = $idElement;
+					}
+				}
+			}
+			if ($timestamp !== null) {
+	 // Todo: validate timestamps.
+				$newRoute['timestamp'] = $timestamp;
+			} else {
+				$newRoute['timestamp'] = date('c');
+			}
+			$this->_messageChannelRouting[] = $newRoute;
+			return true;
+		} else {
+			return false;
+		}
+	
+	}
+	
  /* Keys related methods. */
 	
 	/**
@@ -487,16 +550,45 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 							$package->startElement('GovTalkDetails');
 							
 	 // Keys...
-							if (count($this->_govTalkKeys) > 0) {
-								$package->startElement('Keys');
-								foreach ($this->_govTalkKeys AS $keyPair) {
-									$package->startElement('Key');
-										$package->writeAttribute('type', $keyPair['type']);
-										$package->text($keyPair['value']);
-									$package->endElement(); # Key
+								if (count($this->_govTalkKeys) > 0) {
+									$package->startElement('Keys');
+									foreach ($this->_govTalkKeys AS $keyPair) {
+										$package->startElement('Key');
+											$package->writeAttribute('type', $keyPair['type']);
+											$package->text($keyPair['value']);
+										$package->endElement(); # Key
+									}
+									$package->endElement(); # Keys
 								}
-								$package->endElement(); # Keys
-							}
+							
+	 // Channel routing...
+								$package->startElement('ChannelRouting');
+								$channelRouteArray = $this->_messageChannelRouting;
+								$channelRouteArray[] = array('uri' => 'http://code.google.com/p/php-govtalk/',
+								                             'product' => 'php-govtalk',
+								                             'version' => '1.0',
+								                             'timestamp' => date('c'));
+								foreach ($channelRouteArray AS $channelRoute) {
+									$package->startElement('Channel');
+										$package->writeElement('URI', $channelRoute['uri']);
+										if (array_key_exists('product', $channelRoute)) {
+											$package->writeElement('Product', $channelRoute['product']);
+										}
+										if (array_key_exists('version', $channelRoute)) {
+											$package->writeElement('Version', $channelRoute['version']);
+										}
+										if (array_key_exists('id', $channelRoute) && is_array($channelRoute['id'])) {
+											foreach ($channelRoute['id'] AS $channelRouteId) {
+												$package->startElement('ID');
+													$package->writeAttribute('type', $channelRouteId['type']);
+													$package->writeText($channelRouteId['value']);
+												$package->endElement(); # ID
+											}
+										}
+										$package->writeElement('Timestamp', $channelRoute['timestamp']);
+									$package->endElement(); # Channel
+								}
+								$package->endElement(); # ChannelRouting
 							
 							$package->endElement(); # GovTalkDetails
 
