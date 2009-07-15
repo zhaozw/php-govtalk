@@ -142,21 +142,33 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @var string
 	 */
 	private $_lastTransactionId = null;
+	
+ /* Return data variables. */
+	/**
+	 * Full return data in string format (raw XML).
+	 *
+	 * @var string
+	 */
+	private $_fullResponseString;
 
  /* Magic methods. */
 
 	/**
 	 * Instance constructor.
 	 *
+	 * @param string $govTalkServer GovTalk server.
 	 * @param string $govTalkSenderId GovTalk sender ID.
 	 * @param string $govTalkPassword GovTalk password.
 	 */
-	public function __construct($govTalkSenderId, $govTalkPassword) {
+	public function __construct($govTalkServer, $govTalkSenderId, $govTalkPassword) {
 
+		$this->_govTalkServer = $govTalkServer;
 		$this->_govTalkSenderId = $govTalkSenderId;
 		$this->_govTalkPassword = $govTalkPassword;
 
 	}
+	
+ /* Public methods. */
 
  /* Get methods. */
 
@@ -169,6 +181,22 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 
 		return $this->_lastTransactionId;
 
+	}
+	
+	/**
+	 * Returns the full XML response from the last Gateway request, if there is
+	 * one.
+	 *
+	 * @return mixed The full text response from the Gateway, or false if this isn't set.
+	 */
+	public function getFullXMLResponse() {
+	
+		if (isset($this->_fullResponseString)) {
+			return $this->_fullResponseString;
+		} else {
+			return false;
+		}
+	
 	}
 
  /* General envelope related set methods. */
@@ -474,11 +502,55 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	
 	}
 	
+ /* Message sending related methods. */
+ 
+	/**
+	 * Sends the message currently stored in the object to the currently defined
+	 * GovTalkServer and parses the response for use later.
+	 *
+	 * Note: the return value of this method does not reflect the success of the
+	 * data transmitted to the Gateway, but that the message was transmitted
+	 * correctly and that a response was received.  Applications must query
+	 * the response methods to discover more informationa about the data recieved
+	 * in the Gateway reply.
+	 *
+	 * @return boolean True if the message was successfully submitted to the Gateway and a response was received, false if not.
+	 */
+	public function sendMessage() {
+	
+	   if (function_exists('curl_init')) {
+			$curlHandle = curl_init($this->_govTalkServer);
+			curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+			curl_setopt($curlHandle, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($curlHandle, CURLOPT_SSL_VERIFYPEER, false);
+			curl_setopt($curlHandle, CURLOPT_POSTFIELDS, $this->_packageGovTalkEnvelope());
+			$gatewayResponse = curl_exec($curlHandle);
+			curl_close($curlHandle);
+		} else {
+			$streamOptions = array('http' => array('method' => 'POST',
+			                                       'header' => 'Content-Type: text/xml',
+			                                       'content' => $this->_packageGovTalkEnvelope()));
+			if ($fileHandle = @fopen($this->_govTalkServer, 'r', false, stream_context_create($streamOptions))) {
+				$gatewayResponse = stream_get_contents($fileHandle);
+			} else {
+				return false;
+			}
+		}
+		
+		if ($gatewayResponse !== false) {
+			$this->_fullResponseString = $gatewayResponse;
+			return true;
+		} else {
+			return false;
+		}
+	
+	}
+	
  /* Protected methods. */
 
 	/**
-	 * Sends the message currently stored in the object to the currently defined
-	 * GovTalkServer.
+	 * Packages the message currently stored in the object into a valid GovTalk
+	 * envelope ready for sending.
 	 *
 	 * @return mixed The XML package (as a string) in GovTalk format, or false on failure.
 	 */
@@ -595,9 +667,9 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 // Body...
 							$package->startElement('Body');
 							if (is_string($this->_messageBody)) {
-								$package->writeRaw($this->_messageBody);
+								$package->writeRaw("\n".$this->_messageBody."\n");
 							} else if (is_a($this->_messageBody, 'XMLWriter')) {
-								$package->writeRaw($this->_messageBody->outputMemory());
+								$package->writeRaw("\n".$this->_messageBody->outputMemory()."\n");
 							}
 							$package->endElement(); # Body
 
