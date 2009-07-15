@@ -106,6 +106,12 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
  /* SenderDetails related variables. */
 	
 	/**
+	 * GovTalk SenderDetail EmailAddress.  Default is null, no email address.
+	 *
+	 * @var string
+	 */
+	private $_senderEmailAddress = null;
+	/**
 	 * GovTalk message authentication type.
 	 *
 	 * @var string
@@ -286,6 +292,25 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	}
 	
  /* SenderDetails related methods. */
+
+	/**
+	 * Sets the sender email address for use in SenderDetails header.  Note: the
+	 * validation used when setting an email address here is that specified by
+	 * the GovTalk 2.0 envelope specifcation and is somewhat limited.
+	 *
+	 * @param string $senderEmailAddress The email address to set.
+	 * @return boolean True if the EmailAddress is valid and set, false if it's invalid (and therefore not set).
+	 */
+	public function setSenderEmailAddress($senderEmailAddress) {
+	
+		if (preg_match('/[A-Za-z0-9\.\-_]{1,64}@[A-Za-z0-9\.\-_]{1,64}/', $senderEmailAddress)) {
+			$this->_senderEmailAddress = $senderEmailAddress;
+			return true;
+		} else {
+			return false;
+		}
+
+	}
 	
 	/**
 	 * Sets the type of authentication to use for with the message.  The message
