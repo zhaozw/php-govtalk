@@ -32,7 +32,7 @@
  */
 class GovTalk {
 
-public function test() { var_dump($this->_packageGovTalkEnvelope()); }
+public function test() { var_dump((string) $this->_fullResponseObject->Header->MessageDetails->Class); }
 
  /* Server related variables. */
  
@@ -152,13 +152,19 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 *
 	 * @var string
 	 */
-	private $_fullRequestString;
+	protected $_fullRequestString;
 	/**
 	 * Full return data in string format (raw XML).
 	 *
 	 * @var string
 	 */
-	private $_fullResponseString;
+	protected $_fullResponseString;
+	/**
+	 * Full return data in object format (SimpleXML).
+	 *
+	 * @var string
+	 */
+	protected $_fullResponseObject;
 
  /* Magic methods. */
 
@@ -170,6 +176,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @param string $govTalkPassword GovTalk password.
 	 */
 	public function __construct($govTalkServer, $govTalkSenderId, $govTalkPassword) {
+
+		require_once('SimpleGovTalkElement.php');
 
 		$this->_govTalkServer = $govTalkServer;
 		$this->_govTalkSenderId = $govTalkSenderId;
@@ -564,6 +572,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 		
 		if ($gatewayResponse !== false) {
 			$this->_fullResponseString = $gatewayResponse;
+			$this->_fullResponseObject = simplexml_load_string($gatewayResponse);
 			return true;
 		} else {
 			return false;
@@ -718,7 +727,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	}
 	
  /* Private methods. */
-
+ 
 	/**
 	 * Generates the transaction ID required for GovTalk authentication. Although
 	 * the GovTalk specifcation defines a valid transaction ID as [0-9A-F]{0,32}
