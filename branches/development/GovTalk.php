@@ -119,6 +119,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	private $_messageAuthType;
 	
  /* Keys related variables. */
+ 
 	/**
 	 * GovTalk keys array.
 	 *
@@ -127,6 +128,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	private $_govTalkKeys = array();
 	
  /* Channel routing related variables. */
+ 
 	/**
 	 * GovTalk message channel routing array.
 	 *
@@ -135,7 +137,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	private $_messageChannelRouting = array();
 
  /* System / internal variables. */
-
+ 
 	/**
 	 * Transaction ID of the last message sent.
 	 *
@@ -144,6 +146,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	private $_lastTransactionId = null;
 	
  /* Request/response data variables. */
+ 
 	/**
 	 * Full request data in string format (raw XML).
 	 *
@@ -444,9 +447,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 					}
 				}
 			}
-			if ($timestamp !== null) {
-	 // Todo: validate timestamps.
-				$newRoute['timestamp'] = $timestamp;
+			if (($timestamp !== null) && ($parsedTimestamp = strtotime($timestamp))) {
+				$newRoute['timestamp'] = date('c', $parsedTimestamp);
 			} else {
 				$newRoute['timestamp'] = date('c');
 			}
