@@ -32,8 +32,6 @@
  */
 class GovTalk {
 
-public function test() { var_dump($this->_packageGovTalkEnvelope()); }
-
  /* Server related variables. */
  
 	/**
@@ -47,13 +45,13 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 *
 	 * @var string
 	 */
-	private $_govTalkSenderId;
+	protected $_govTalkSenderId;
 	/**
 	 * GovTalk sender password.
 	 *
 	 * @var string
 	 */
-	private $_govTalkPassword;
+	protected $_govTalkPassword;
 
  /* General envelope related variables. */
  
@@ -119,6 +117,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	private $_messageAuthType;
 	
  /* Keys related variables. */
+ 
 	/**
 	 * GovTalk keys array.
 	 *
@@ -127,12 +126,34 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	private $_govTalkKeys = array();
 	
  /* Channel routing related variables. */
+ 
 	/**
 	 * GovTalk message channel routing array.
 	 *
 	 * @var array
 	 */
 	private $_messageChannelRouting = array();
+
+ /* Full request/response data variables. */
+ 
+	/**
+	 * Full request data in string format (raw XML).
+	 *
+	 * @var string
+	 */
+	protected $_fullRequestString;
+	/**
+	 * Full return data in string format (raw XML).
+	 *
+	 * @var string
+	 */
+	protected $_fullResponseString;
+	/**
+	 * Full return data in object format (SimpleXML).
+	 *
+	 * @var string
+	 */
+	protected $_fullResponseObject;
 
  /* System / internal variables. */
 
@@ -142,20 +163,6 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * @var string
 	 */
 	private $_lastTransactionId = null;
-	
- /* Request/response data variables. */
-	/**
-	 * Full request data in string format (raw XML).
-	 *
-	 * @var string
-	 */
-	private $_fullRequestString;
-	/**
-	 * Full return data in string format (raw XML).
-	 *
-	 * @var string
-	 */
-	private $_fullResponseString;
 
  /* Magic methods. */
 
@@ -175,8 +182,30 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	}
 	
  /* Public methods. */
+ 
+ /* Logical / operational / conditional methods. */
+ 
+	/**
+	 * Tests if a response has errors.  Should be checked before further
+	 * operations are carried out on the returned object.
+	 *
+	 * @return boolean True if errors are present, false if not.
+	 */
+	public function responseHasErrors() {
+	
+		if (isset($this->_fullResponseObject)) {
+			if (isset($this->_fullResponseObject->GovTalkDetails->GovTalkErrors)) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	
+	}
 
- /* Get methods. */
+ /* System / internal get methods. */
 
 	/**
 	 * Returns the transaction ID used in the last message sent.
@@ -219,6 +248,86 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 			return false;
 		}
 	
+	}
+	
+ /* Response data get methods */
+
+	/**
+	 * Returns the Gateway response message qualifier of the last response
+	 * received, if there is one.
+	 *
+	 * @return integer The response qualifier, or false if there is no response.
+	 */
+	public function getResponseQualifier() {
+
+		if (isset($this->_fullResponseObject)) {
+			return (string) $this->_fullResponseObject->Header->MessageDetails->Qualifer;
+		} else {
+			return false;
+		}
+
+	}
+
+	/**
+	 * Returns the Gateway timestamp of the last response received, if there is
+	 * one.
+	 *
+	 * @return integer The Gateway timestamp as a unix timestamp, or false if this isn't set.
+	 */
+	public function getGatewayTimestamp() {
+	
+		if (isset($this->_fullResponseObject)) {
+			return strtotime((string) $this->_fullResponseObject->Header->MessageDetails->GatewayTimestamp);
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Returns the contents of the response Body section, removing all GovTalk
+	 * Message Envelope wrappers, as a SimpleXML object.
+	 *
+	 * @return mixed The message body as a SimpleXML object, or false if this isn't set.
+	 */
+	public function getResponseBody() {
+	
+		if (isset($this->_fullResponseObject)) {
+			return $this->_fullResponseObject->Body;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Returns an array of errors, if any are present.  Errors can be 'fatal',
+	 * 'recoverable', 'business' or 'warning'.  If no errors are found this
+	 * function will return false.
+	 *
+	 * @return mixed Array of errors, or false if there are no errors.
+	 */
+	public function getResponseErrors() {
+
+		if ($this->responseHasErrors()) {
+			$errorArray = array('fatal' => array(),
+			                    'recoverable' => array(),
+			                    'recoverable' => array(),
+			                    'business' => array(),
+			                    'warning' => array());
+			foreach ($this->_fullResponseObject->GovTalkDetails->GovTalkErrors->Error AS $responseError) {
+				$errorDetails = array('number' => (string) $responseError->Number,
+				                      'text' => (string) $responseError->Text);
+				if (isset($responseError->Location) && (string) $responseError->Location !== '') {
+					$errorDetails['location'] = (string) $responseError->Location;
+				}
+				$errorArray[(string) $responseError->Type][] = $errorDetails;
+			}
+			return $errorArray;
+		} else {
+			return false;
+		}
+
 	}
 
  /* General envelope related set methods. */
@@ -309,6 +418,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 */
 	public function setMessageQualifier($messageQualifier) {
 
+		$messageQualifier = strtolower($messageQualifier);
 		switch ($messageQualifier) {
 			case 'request':
 			case 'acknowledgement':
@@ -380,7 +490,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	
 	/**
 	 * Sets the type of authentication to use for with the message.  The message
-	 * type must be one of 'clear', 'CHMD5', 'MD5' or 'W3Csigned'.  Any other
+	 * type must be one of 'alternative', 'clear', 'MD5' or 'W3Csigned'. Other
 	 * values will not be set and will return false.
 	 *
 	 * @param string $messageAuthType The type of authentication to set.
@@ -389,8 +499,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	public function setMessageAuthentication($messageAuthType) {
 	
 		switch ($messageAuthType) {
+			case 'alternative':
 			case 'clear':
-			case 'CHMD5':
 			case 'MD5':
 			case 'W3Csigned':
 				$this->_messageAuthType = $messageAuthType;
@@ -444,9 +554,8 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 					}
 				}
 			}
-			if ($timestamp !== null) {
-	 // Todo: validate timestamps.
-				$newRoute['timestamp'] = $timestamp;
+			if (($timestamp !== null) && ($parsedTimestamp = strtotime($timestamp))) {
+				$newRoute['timestamp'] = date('c', $parsedTimestamp);
 			} else {
 				$newRoute['timestamp'] = date('c');
 			}
@@ -536,33 +645,38 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 * the response methods to discover more informationa about the data recieved
 	 * in the Gateway reply.
 	 *
+	 * @param mixed
 	 * @return boolean True if the message was successfully submitted to the Gateway and a response was received, false if not.
 	 */
 	public function sendMessage() {
 	
-		$this->_fullRequestString = $this->_packageGovTalkEnvelope();
-	   if (function_exists('curl_init')) {
-			$curlHandle = curl_init($this->_govTalkServer);
-			curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
-			curl_setopt($curlHandle, CURLOPT_RETURNTRANSFER, 1);
-			curl_setopt($curlHandle, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($curlHandle, CURLOPT_POSTFIELDS, $this->_fullRequestString);
-			$gatewayResponse = curl_exec($curlHandle);
-			curl_close($curlHandle);
-		} else {
-			$streamOptions = array('http' => array('method' => 'POST',
-			                                       'header' => 'Content-Type: text/xml',
-			                                       'content' => $this->_fullRequestString));
-			if ($fileHandle = @fopen($this->_govTalkServer, 'r', false, stream_context_create($streamOptions))) {
-				$gatewayResponse = stream_get_contents($fileHandle);
+		if ($this->_fullRequestString = $this->_packageGovTalkEnvelope()) {
+		   if (function_exists('curl_init')) {
+				$curlHandle = curl_init($this->_govTalkServer);
+				curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+				curl_setopt($curlHandle, CURLOPT_RETURNTRANSFER, 1);
+				curl_setopt($curlHandle, CURLOPT_SSL_VERIFYPEER, false);
+				curl_setopt($curlHandle, CURLOPT_POSTFIELDS, $this->_fullRequestString);
+				$gatewayResponse = curl_exec($curlHandle);
+				curl_close($curlHandle);
+			} else {
+				$streamOptions = array('http' => array('method' => 'POST',
+				                                       'header' => 'Content-Type: text/xml',
+				                                       'content' => $this->_fullRequestString));
+				if ($fileHandle = @fopen($this->_govTalkServer, 'r', false, stream_context_create($streamOptions))) {
+					$gatewayResponse = stream_get_contents($fileHandle);
+				} else {
+					return false;
+				}
+			}
+
+			if ($gatewayResponse !== false) {
+				$this->_fullResponseString = $gatewayResponse;
+				$this->_fullResponseObject = simplexml_load_string($gatewayResponse);
+				return true;
 			} else {
 				return false;
 			}
-		}
-		
-		if ($gatewayResponse !== false) {
-			$this->_fullResponseString = $gatewayResponse;
-			return true;
 		} else {
 			return false;
 		}
@@ -570,6 +684,24 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	}
 	
  /* Protected methods. */
+ 
+	/**
+	 * This method is designed to be over-ridden by extending classes which
+	 * require an alternative authentication algorithm.
+	 *
+	 * These methods should take the transaction ID as an argument and return
+	 * an array of 'method' => the method string to use in IDAuthentication->
+	 * Authentication->Method, 'token' => the token to use in IDAuthentication->
+	 * Authentication->Value, or false on failure.
+	 *
+	 * @param string $transactionId Transaction ID to use generating the token.
+	 * @return mixed The authentication array, or false on failure.
+	 */
+	protected function generateAlternativeAuthentication($transactionId) {
+	
+	   return false;
+	
+	}
 
 	/**
 	 * Packages the message currently stored in the object into a valid GovTalk
@@ -598,7 +730,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 							$xsiSchemaLocation .= ' http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd';
 						}
 						$package->writeAttributeNS('xsi', 'schemaLocation', 'http://www.w3.org/2001/XMLSchema-instance', $xsiSchemaLocation);
-							$package->writeElement('EnvelopeVersion', '1.0');
+							$package->writeElement('EnvelopeVersion', '2.0');
 							
 	 // Header...
 							$package->startElement('Header');
@@ -621,21 +753,28 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 								$package->startElement('SenderDetails');
 								
 	 // Authentication...
-								switch ($this->_messageAuthType) {
-									case 'CHMD5':
-										$authenticationToken = $this->_generateCHMD5Authentication($transactionId);
-										$package->startElement('IDAuthentication');
-											$package->writeElement('SenderID', $this->_govTalkSenderId);
-											$package->startElement('Authentication');
-												$package->writeElement('Method', 'CHMD5');
-												$package->writeElement('Value', $authenticationToken);
-											$package->endElement(); # Authentication
-										$package->endElement(); # IDAuthentication
-										if ($this->_senderEmailAddress !== null) {
-											$package->writeElement('EmailAddress', $this->_senderEmailAddress);
+									$package->startElement('IDAuthentication');
+										$package->writeElement('SenderID', $this->_govTalkSenderId);
+										$package->startElement('Authentication');
+										switch ($this->_messageAuthType) {
+											case 'alternative':
+												if ($authenticationArray = $this->generateAlternativeAuthentication($transactionId)) {
+													$package->writeElement('Method', $authenticationArray['method']);
+													$package->writeElement('Value', $authenticationArray['token']);
+												} else {
+													return false;
+												}
+											break;
+											case 'clear':
+												$package->writeElement('Method', 'clear');
+												$package->writeElement('Value', $this->_govTalkPassword);
+											break;
 										}
-									break;
-								}
+										$package->endElement(); # Authentication
+									$package->endElement(); # IDAuthentication
+									if ($this->_senderEmailAddress !== null) {
+										$package->writeElement('EmailAddress', $this->_senderEmailAddress);
+									}
 						
 								$package->endElement(); # SenderDetails
 						
@@ -690,9 +829,9 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	 // Body...
 							$package->startElement('Body');
 							if (is_string($this->_messageBody)) {
-								$package->writeRaw("\n".$this->_messageBody."\n");
+								$package->writeRaw("\n".trim($this->_messageBody)."\n");
 							} else if (is_a($this->_messageBody, 'XMLWriter')) {
-								$package->writeRaw("\n".$this->_messageBody->outputMemory()."\n");
+								$package->writeRaw("\n".trim($this->_messageBody->outputMemory())."\n");
 							}
 							$package->endElement(); # Body
 
@@ -716,7 +855,7 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	}
 	
  /* Private methods. */
-
+ 
 	/**
 	 * Generates the transaction ID required for GovTalk authentication. Although
 	 * the GovTalk specifcation defines a valid transaction ID as [0-9A-F]{0,32}
@@ -729,24 +868,6 @@ public function test() { var_dump($this->_packageGovTalkEnvelope()); }
 	private function _generateTransactionId() {
 
 		return str_replace('.', '', microtime(true));
-
-	}
-
-	/**
-	 * Generates the token required to authenticate with the XML Gateway.  This
-	 * function assumes the Gateway username and password have already been
-	 * defined.
-	 *
-	 * @param string $transactionId Transaction ID to use generating the token.
-	 * @return mixed The authentication token, or false on failure.
-	 */
-	private function _generateCHMD5Authentication($transactionId) {
-
-		if (is_numeric($transactionId)) {
-			return md5($this->_govTalkSenderId.$this->_govTalkPassword.$transactionId);
-		} else {
-			return false;
-		}
 
 	}
 
