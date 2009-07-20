@@ -32,8 +32,6 @@
  */
 class GovTalk {
 
-public function test() { var_dump($this->_fullResponseObject); }
-
  /* Server related variables. */
  
 	/**
@@ -252,36 +250,6 @@ public function test() { var_dump($this->_fullResponseObject); }
 	
 	}
 	
-	/**
-	 * Returns an array of errors, if any are present.  Errors can be 'fatal',
-	 * 'recoverable', 'business' or 'warning'.  If no errors are found this
-	 * function will return false.
-	 *
-	 * @return mixed Array of errors, or false if there are no errors.
-	 */
-	public function getResponseErrors() {
-	
-		if ($this->responseHasErrors()) {
-			$errorArray = array('fatal' => array(),
-			                    'recoverable' => array(),
-			                    'recoverable' => array(),
-			                    'business' => array(),
-			                    'warning' => array());
-			foreach ($this->_fullResponseObject->GovTalkDetails->GovTalkErrors->Error AS $responseError) {
-				$errorDetails = array('number' => (string) $responseError->Number,
-				                      'text' => (string) $responseError->Text);
-				if (isset($responseError->Location) && (string) $responseError->Location !== '') {
-					$errorDetails['location'] = (string) $responseError->Location;
-				}
-				$errorArray[(string) $responseError->Type][] = $errorDetails;
-			}
-			return $errorArray;
-		} else {
-			return false;
-		}
-	
-	}
-	
  /* Response data get methods */
 
 	/**
@@ -314,6 +282,52 @@ public function test() { var_dump($this->_fullResponseObject); }
 			return false;
 		}
 	
+	}
+	
+	/**
+	 * Returns the contents of the response Body section, removing all GovTalk
+	 * Message Envelope wrappers, as a SimpleXML object.
+	 *
+	 * @return mixed The message body as a SimpleXML object, or false if this isn't set.
+	 */
+	public function getResponseBody() {
+	
+		if (isset($this->_fullResponseObject)) {
+			return $this->_fullResponseObject->Body;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Returns an array of errors, if any are present.  Errors can be 'fatal',
+	 * 'recoverable', 'business' or 'warning'.  If no errors are found this
+	 * function will return false.
+	 *
+	 * @return mixed Array of errors, or false if there are no errors.
+	 */
+	public function getResponseErrors() {
+
+		if ($this->responseHasErrors()) {
+			$errorArray = array('fatal' => array(),
+			                    'recoverable' => array(),
+			                    'recoverable' => array(),
+			                    'business' => array(),
+			                    'warning' => array());
+			foreach ($this->_fullResponseObject->GovTalkDetails->GovTalkErrors->Error AS $responseError) {
+				$errorDetails = array('number' => (string) $responseError->Number,
+				                      'text' => (string) $responseError->Text);
+				if (isset($responseError->Location) && (string) $responseError->Location !== '') {
+					$errorDetails['location'] = (string) $responseError->Location;
+				}
+				$errorArray[(string) $responseError->Type][] = $errorDetails;
+			}
+			return $errorArray;
+		} else {
+			return false;
+		}
+
 	}
 
  /* General envelope related set methods. */
@@ -404,6 +418,7 @@ public function test() { var_dump($this->_fullResponseObject); }
 	 */
 	public function setMessageQualifier($messageQualifier) {
 
+		$messageQualifier = strtolower($messageQualifier);
 		switch ($messageQualifier) {
 			case 'request':
 			case 'acknowledgement':
@@ -630,6 +645,7 @@ public function test() { var_dump($this->_fullResponseObject); }
 	 * the response methods to discover more informationa about the data recieved
 	 * in the Gateway reply.
 	 *
+	 * @param mixed
 	 * @return boolean True if the message was successfully submitted to the Gateway and a response was received, false if not.
 	 */
 	public function sendMessage() {
@@ -681,7 +697,7 @@ public function test() { var_dump($this->_fullResponseObject); }
 	 * @param string $transactionId Transaction ID to use generating the token.
 	 * @return mixed The authentication array, or false on failure.
 	 */
-	protected function _generateAlternativeAuthentication($transactionId) {
+	protected function generateAlternativeAuthentication($transactionId) {
 	
 	   return false;
 	
@@ -742,7 +758,7 @@ public function test() { var_dump($this->_fullResponseObject); }
 										$package->startElement('Authentication');
 										switch ($this->_messageAuthType) {
 											case 'alternative':
-												if ($authenticationArray = $this->_generateAlternativeAuthentication($transactionId)) {
+												if ($authenticationArray = $this->generateAlternativeAuthentication($transactionId)) {
 													$package->writeElement('Method', $authenticationArray['method']);
 													$package->writeElement('Value', $authenticationArray['token']);
 												} else {
@@ -813,9 +829,9 @@ public function test() { var_dump($this->_fullResponseObject); }
 	 // Body...
 							$package->startElement('Body');
 							if (is_string($this->_messageBody)) {
-								$package->writeRaw("\n".$this->_messageBody."\n");
+								$package->writeRaw("\n".trim($this->_messageBody)."\n");
 							} else if (is_a($this->_messageBody, 'XMLWriter')) {
-								$package->writeRaw("\n".$this->_messageBody->outputMemory()."\n");
+								$package->writeRaw("\n".trim($this->_messageBody->outputMemory())."\n");
 							}
 							$package->endElement(); # Body
 
