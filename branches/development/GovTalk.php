@@ -717,7 +717,7 @@ public function test() { var_dump($this->_fullResponseObject); }
 							$package->writeElement('EnvelopeVersion', '2.0');
 							
 	 // Header...
-//							$package->startElement('Header');
+							$package->startElement('Header');
 							
 	 // Message details...
 								$package->startElement('MessageDetails');
@@ -762,7 +762,7 @@ public function test() { var_dump($this->_fullResponseObject); }
 						
 								$package->endElement(); # SenderDetails
 						
-//							$package->endElement(); # Header
+							$package->endElement(); # Header
 							
 	 // GovTalk details...
 							$package->startElement('GovTalkDetails');
