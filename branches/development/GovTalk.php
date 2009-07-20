@@ -184,6 +184,28 @@ public function test() { var_dump($this->_fullResponseObject); }
 	}
 	
  /* Public methods. */
+ 
+ /* Logical / operational / conditional methods. */
+ 
+	/**
+	 * Tests if a response has errors.  Should be checked before further
+	 * operations are carried out on the returned object.
+	 *
+	 * @return boolean True if errors are present, false if not.
+	 */
+	public function responseHasErrors() {
+	
+		if (isset($this->_fullResponseObject)) {
+			if (isset($this->_fullResponseObject->GovTalkDetails->GovTalkErrors)) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	
+	}
 
  /* System / internal get methods. */
 
@@ -230,8 +252,54 @@ public function test() { var_dump($this->_fullResponseObject); }
 	
 	}
 	
+	/**
+	 * Returns an array of errors, if any are present.  Errors can be 'fatal',
+	 * 'recoverable', 'business' or 'warning'.  If no errors are found this
+	 * function will return false.
+	 *
+	 * @return mixed Array of errors, or false if there are no errors.
+	 */
+	public function getResponseErrors() {
+	
+		if ($this->responseHasErrors()) {
+			$errorArray = array('fatal' => array(),
+			                    'recoverable' => array(),
+			                    'recoverable' => array(),
+			                    'business' => array(),
+			                    'warning' => array());
+			foreach ($this->_fullResponseObject->GovTalkDetails->GovTalkErrors->Error AS $responseError) {
+				$errorDetails = array('number' => (string) $responseError->Number,
+				                      'text' => (string) $responseError->Text);
+				if (isset($responseError->Location) && (string) $responseError->Location !== '') {
+					$errorDetails['location'] = (string) $responseError->Location;
+				}
+				$errorArray[(string) $responseError->Type][] = $errorDetails;
+			}
+			return $errorArray;
+		} else {
+			return false;
+		}
+	
+	}
+	
  /* Response data get methods */
- 
+
+	/**
+	 * Returns the Gateway response message qualifier of the last response
+	 * received, if there is one.
+	 *
+	 * @return integer The response qualifier, or false if there is no response.
+	 */
+	public function getResponseQualifier() {
+
+		if (isset($this->_fullResponseObject)) {
+			return (string) $this->_fullResponseObject->Header->MessageDetails->Qualifer;
+		} else {
+			return false;
+		}
+
+	}
+
 	/**
 	 * Returns the Gateway timestamp of the last response received, if there is
 	 * one.
@@ -649,7 +717,7 @@ public function test() { var_dump($this->_fullResponseObject); }
 							$package->writeElement('EnvelopeVersion', '2.0');
 							
 	 // Header...
-							$package->startElement('Header');
+//							$package->startElement('Header');
 							
 	 // Message details...
 								$package->startElement('MessageDetails');
@@ -694,7 +762,7 @@ public function test() { var_dump($this->_fullResponseObject); }
 						
 								$package->endElement(); # SenderDetails
 						
-							$package->endElement(); # Header
+//							$package->endElement(); # Header
 							
 	 // GovTalk details...
 							$package->startElement('GovTalkDetails');
