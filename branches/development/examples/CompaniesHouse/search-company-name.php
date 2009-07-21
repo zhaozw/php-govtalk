@@ -1,7 +1,7 @@
 <?php
 
 	 // Include the Companies House module...
-require_once('../CompaniesHouse.php');
+require_once('../../CompaniesHouse.php');
 
 	 // Companies house user ID and password...
 $chUserId = 'XMLGatewayTestUserID';
@@ -15,13 +15,13 @@ if (isset($_GET['companyname'])) {
 
 	 // Exact match...
 		if (is_array($companyList['exact'])) {
-			echo 'Exact name match: '.$companyList['exact']['name'].' ('.$companyList['exact']['number'].')';
+			echo 'Exact name match: '.$companyList['exact']['name'].' (<a href="view-company-details.php?companynumber='.$companyList['exact']['number'].'">'.$companyList['exact']['number'].'</a>)';
 		}
 		
 	 // Similar (including exact match)...
 		echo '<ul>';
 		foreach ($companyList['match'] AS $company) {
-			echo '<li>'.$company['name'].' ('.$company['number'].')</li>';
+			echo '<li>'.$company['name'].' (<a href="view-company-details.php?companynumber='.$company['number'].'">'.$company['number'].'</a>)</li>';
 		}
 		echo '</ul>';
 		
