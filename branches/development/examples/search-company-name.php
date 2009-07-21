@@ -26,6 +26,7 @@ if (isset($_GET['companyname'])) {
 		echo '</ul>';
 		
 	} else {
+	 // No companies found / error occured...
 		echo 'No companies found for \''.$_GET['companyname'].'\'.';
 	}
 	

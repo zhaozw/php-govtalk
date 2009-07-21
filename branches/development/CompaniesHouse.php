@@ -47,50 +47,8 @@ class CompaniesHouse extends GovTalk {
 
  /* Public methods. */
 
-	/**
-	 * Processes a simple company NumberSearch and returns the results.
-	 *
-	 * @param string $companyNumber The number (or partial number) of the company for which to search.
-	 * @param string $dataset The dataset to search within ('LIVE', 'DISSOLVED', 'FORMER', 'PROPOSED').
-	 * @return mixed An array of companies found by the search, or false on failure.
-	 */
-	public function companyNumberSearch($companyNumber, $dataset = 'LIVE') {
-
-		if (preg_match('/[A-Z0-9]{1,8}[*]{0,1}/', $companyNumber)) {
-			$dataset = strtoupper($dataset);
-			switch ($dataset) {
-			   case 'LIVE': case 'DISSOLVED': case 'FORMER': case 'PROPOSED':
-			   
-					$this->setMessageClass('NumberSearch');
-					$this->setMessageQualifier('request');
-					$this->setMessageAuthentication('alternative');
-					
-					$package = new XMLWriter();
-					$package->openMemory();
-					$package->setIndent(true);
-					$package->startElement('NumberSearchRequest');
-						$package->writeElement('PartialCompanyNumber', $companyNumber);
-						$package->writeElement('DataSet', $dataset);
-					$package->endElement();
-					
-					$this->setMessageBody($package);
-					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
-						return $this->_parseCompanySearchResult($this->getResponseBody()->NumberSearch);
-					} else {
-						return false;
-					}
-					
-			   break;
-			   default:
-				   return false;
-				break;
-			}
-		} else {
-			return false;
-		}
-
-	}
-
+ /* Search methods. */
+ 
 	/**
 	 * Processes a simple company NameSearch and returns the results.
 	 *
@@ -134,7 +92,165 @@ class CompaniesHouse extends GovTalk {
 		}
 	
 	}
- 
+	
+	/**
+	 * Processes a simple company NumberSearch and returns the results.
+	 *
+	 * @param string $companyNumber The number (or partial number) of the company for which to search.
+	 * @param string $dataset The dataset to search within ('LIVE', 'DISSOLVED', 'FORMER', 'PROPOSED').
+	 * @return mixed An array of companies found by the search, or false on failure.
+	 */
+	public function companyNumberSearch($companyNumber, $dataset = 'LIVE') {
+
+		if (preg_match('/[A-Z0-9]{1,8}[*]{0,1}/', $companyNumber)) {
+			$dataset = strtoupper($dataset);
+			switch ($dataset) {
+			   case 'LIVE': case 'DISSOLVED': case 'FORMER': case 'PROPOSED':
+
+					$this->setMessageClass('NumberSearch');
+					$this->setMessageQualifier('request');
+					$this->setMessageAuthentication('alternative');
+
+					$package = new XMLWriter();
+					$package->openMemory();
+					$package->setIndent(true);
+					$package->startElement('NumberSearchRequest');
+						$package->writeElement('PartialCompanyNumber', $companyNumber);
+						$package->writeElement('DataSet', $dataset);
+					$package->endElement();
+
+					$this->setMessageBody($package);
+					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+						return $this->_parseCompanySearchResult($this->getResponseBody()->NumberSearch);
+					} else {
+						return false;
+					}
+
+			   break;
+			   default:
+				   return false;
+				break;
+			}
+		} else {
+			return false;
+		}
+
+	}
+	
+ /* Details methods. */
+	
+	/**
+	 * Processes a company DetailsRequest and returns the results.
+	 *
+	 * @param string $companyNumber The number of the company for which to search.
+	 * @param boolean $mortTotals Flag indicating if mortgage totals should be returned (if available).
+	 * @return mixed An array packed with lots of exciting company data, or false on failure.
+	 */
+	public function companyDetailsRequest($companyNumber, $mortTotals = true) {
+	
+		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
+
+			$this->setMessageClass('CompanyDetails');
+			$this->setMessageQualifier('request');
+			$this->setMessageAuthentication('alternative');
+			
+			$package = new XMLWriter();
+			$package->openMemory();
+			$package->setIndent(true);
+			$package->startElement('CompanyDetailsRequest');
+				$package->writeElement('CompanyNumber', $companyNumber);
+				if ($mortTotals === true) {
+					$package->writeElement('GiveMortTotals', '1');
+				}
+			$package->endElement();
+			
+			$this->setMessageBody($package);
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+
+	 // Basic details...
+				$companyDetailsBody = $this->getResponseBody();
+				$companyDetails = array('name' => (string) $companyDetailsBody->CompanyDetails->CompanyName,
+				                        'number' => (string) $companyDetailsBody->CompanyDetails->CompanyNumber,
+				                        'category' => (string) $companyDetailsBody->CompanyDetails->CompanyCategory,
+				                        'status' => (string) $companyDetailsBody->CompanyDetails->CompanyStatus,
+				                        'liquidation' => (string) $companyDetailsBody->CompanyDetails->InLiquidation,
+				                        'branchinfo' => (string) $companyDetailsBody->CompanyDetails->HasBranchInfo,
+				                        'appointments' => (string) $companyDetailsBody->CompanyDetails->HasAppointments);
+
+	 // Dates...
+				if (isset($companyDetailsBody->CompanyDetails->RegistrationDate)) {
+					$companyDetails['registration_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->RegistrationDate);
+				}
+				if (isset($companyDetailsBody->CompanyDetails->DissolutionDate)) {
+					$companyDetails['dissolution_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->DissolutionDate);
+				}
+				if (isset($companyDetailsBody->CompanyDetails->IncorporationDate)) {
+					$companyDetails['incorporation_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->IncorporationDate);
+				}
+				if (isset($companyDetailsBody->CompanyDetails->ClosureDate)) {
+					$companyDetails['closure_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->ClosureDate);
+				}
+
+	// Accounts and finance...
+				if (isset($companyDetailsBody->CompanyDetails->Accounts)) {
+					$companyDetails['accounts'] = array('overdue' => (string) $companyDetailsBody->CompanyDetails->Accounts->Overdue,
+					                                    'document' => (string) $companyDetailsBody->CompanyDetails->Accounts->DocumentAvailable);
+					if (isset($companyDetailsBody->CompanyDetails->Accounts->AccountRefDate)) {
+						$companyDetails['accounts']['reference_date'] = (string) $companyDetailsBody->CompanyDetails->Accounts->AccountRefDate;
+					}
+					if (isset($companyDetailsBody->CompanyDetails->Accounts->NextDueDate)) {
+						$companyDetails['accounts']['due_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->Accounts->NextDueDate);
+					}
+					if (isset($companyDetailsBody->CompanyDetails->Accounts->LastMadeUpDate)) {
+						$companyDetails['accounts']['last_madeup'] = strtotime((string) $companyDetailsBody->CompanyDetails->Accounts->LastMadeUpDate);
+					}
+					if (isset($companyDetailsBody->CompanyDetails->Accounts->AccountCategory)) {
+						$companyDetails['accounts']['category'] = (string) $companyDetailsBody->CompanyDetails->Accounts->AccountCategory;
+					}
+				}
+				if (isset($companyDetailsBody->CompanyDetails->Returns)) {
+					$companyDetails['returns'] = array('overdue' => (string) $companyDetailsBody->CompanyDetails->Returns->Overdue,
+					                                   'document' => (string) $companyDetailsBody->CompanyDetails->Returns->DocumentAvailable);
+					if (isset($companyDetailsBody->CompanyDetails->Returns->NextDueDate)) {
+						$companyDetails['returns']['due_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->Returns->NextDueDate);
+					}
+					if (isset($companyDetailsBody->CompanyDetails->Returns->LastMadeUpDate)) {
+						$companyDetails['returns']['last_madeup'] = strtotime((string) $companyDetailsBody->CompanyDetails->Returns->LastMadeUpDate);
+					}
+				}
+				if (isset($companyDetailsBody->CompanyDetails->Mortgages)) {
+					$companyDetails['mortgage'] = array('register' => (string) $companyDetailsBody->CompanyDetails->Mortgages->MortgageInd,
+					                                    'charges' => (string) $companyDetailsBody->CompanyDetails->Mortgages->NumMortCharges,
+					                                    'outstanding' => (string) $companyDetailsBody->CompanyDetails->Mortgages->NumMortOutstanding,
+					                                    'part_satisfied' => (string) $companyDetailsBody->CompanyDetails->Mortgages->NumMortPartSatisfied,
+					                                    'fully_satisfied' => (string) $companyDetailsBody->CompanyDetails->Mortgages->NumMortSatisfied);
+				}
+
+	 // Additional company details...
+				if (isset($companyDetailsBody->CompanyDetails->PreviousNames)) {
+					foreach ($companyDetailsBody->CompanyDetails->PreviousNames->CompanyName AS $previousName) {
+						$companyDetails['previous_name'][] = (string) $previousName;
+					}
+				}
+				foreach ($companyDetailsBody->CompanyDetails->RegAddress->AddressLine AS $addressLine) {
+					$companyDetails['address'][] = (string) $addressLine;
+				}
+				foreach ($companyDetailsBody->CompanyDetails->SICCodes->SicText AS $sicItem) {
+					$companyDetails['sic_code'][] = (string) $sicItem;
+				}
+
+				return $companyDetails;
+
+			} else {
+				return false;
+			}
+
+		} else {
+			return false;
+		}
+	
+	}
+
  /* Protected methods. */
  
 	/**
