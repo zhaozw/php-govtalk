@@ -11,7 +11,7 @@ if (isset($_GET['companynumber'])) {
 
 	 // Deal with form submission, do a CH request and print out information...
 	$companiesHouse = new CompaniesHouse($chUserId, $chPassword);
-	if ($companyDetails = $companiesHouse->companyDetailsRequest($_GET['companynumber'])) {
+	if ($companyDetails = $companiesHouse->companyDetails($_GET['companynumber'])) {
 
 		echo 'Company name: '.$companyDetails['name'].'<br />';
 		echo 'Company type: '.$companyDetails['category'].'<br />';

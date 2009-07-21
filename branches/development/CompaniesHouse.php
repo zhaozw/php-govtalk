@@ -42,6 +42,7 @@ class CompaniesHouse extends GovTalk {
 	public function __construct($govTalkSenderId, $govTalkPassword) {
 	
 		parent::__construct('http://xmlgw.companieshouse.gov.uk/v1-0/xmlgw/Gateway', $govTalkSenderId, $govTalkPassword);
+		$this->setSchemaLocation('http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd');
 		$this->setMessageAuthentication('alternative');
 
 	}
@@ -142,10 +143,10 @@ class CompaniesHouse extends GovTalk {
 	 * Processes a company DetailsRequest and returns the results.
 	 *
 	 * @param string $companyNumber The number of the company for which to return details.
-	 * @param boolean $mortTotals Flag indicating if mortgage totals should be returned (if available).
+	 * @param boolean $mortgageTotals Flag indicating if mortgage totals should be returned (if available).
 	 * @return mixed An array packed with lots of exciting company data, or false on failure.
 	 */
-	public function companyDetailsRequest($companyNumber, $mortTotals = true) {
+	public function companyDetails($companyNumber, $mortgageTotals = false) {
 	
 		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
 
@@ -157,7 +158,7 @@ class CompaniesHouse extends GovTalk {
 			$package->setIndent(true);
 			$package->startElement('CompanyDetailsRequest');
 				$package->writeElement('CompanyNumber', $companyNumber);
-				if ($mortTotals === true) {
+				if ($mortgageTotals === true) {
 					$package->writeElement('GiveMortTotals', '1');
 				}
 			$package->endElement();
@@ -256,7 +257,7 @@ class CompaniesHouse extends GovTalk {
 	 * @param boolean $capitalDocs Flag indicating if capital documents should be returned (if available).
 	 * @return mixed An array containing the filing history inclduing document keys, or false on failure.
 	 */
-	public function companyFilingHistoryRequest($companyNumber, $capitalDocs = true) {
+	public function companyFilingHistory($companyNumber, $capitalDocs = false) {
 
 		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
 
@@ -276,7 +277,6 @@ class CompaniesHouse extends GovTalk {
 			$this->setMessageBody($package);
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 
-	 // Basic details...
 				$filingHistoryBody = $this->getResponseBody();
 				if (isset($filingHistoryBody->FilingHistory->FHistItem)) {
 					$filingHistory = array();
