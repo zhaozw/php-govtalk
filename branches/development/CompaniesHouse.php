@@ -42,6 +42,7 @@ class CompaniesHouse extends GovTalk {
 	public function __construct($govTalkSenderId, $govTalkPassword) {
 	
 		parent::__construct('http://xmlgw.companieshouse.gov.uk/v1-0/xmlgw/Gateway', $govTalkSenderId, $govTalkPassword);
+		$this->setMessageAuthentication('alternative');
 
 	}
 
@@ -65,7 +66,6 @@ class CompaniesHouse extends GovTalk {
 			   
 					$this->setMessageClass('NameSearch');
 					$this->setMessageQualifier('request');
-					$this->setMessageAuthentication('alternative');
 
 					$package = new XMLWriter();
 					$package->openMemory();
@@ -109,7 +109,6 @@ class CompaniesHouse extends GovTalk {
 
 					$this->setMessageClass('NumberSearch');
 					$this->setMessageQualifier('request');
-					$this->setMessageAuthentication('alternative');
 
 					$package = new XMLWriter();
 					$package->openMemory();
@@ -142,7 +141,7 @@ class CompaniesHouse extends GovTalk {
 	/**
 	 * Processes a company DetailsRequest and returns the results.
 	 *
-	 * @param string $companyNumber The number of the company for which to search.
+	 * @param string $companyNumber The number of the company for which to return details.
 	 * @param boolean $mortTotals Flag indicating if mortgage totals should be returned (if available).
 	 * @return mixed An array packed with lots of exciting company data, or false on failure.
 	 */
@@ -152,7 +151,6 @@ class CompaniesHouse extends GovTalk {
 
 			$this->setMessageClass('CompanyDetails');
 			$this->setMessageQualifier('request');
-			$this->setMessageAuthentication('alternative');
 			
 			$package = new XMLWriter();
 			$package->openMemory();
@@ -249,6 +247,66 @@ class CompaniesHouse extends GovTalk {
 			return false;
 		}
 	
+	}
+	
+	/**
+	 * Processes a company FilingHistoryRequest and returns the results.
+	 *
+	 * @param string $companyNumber The number of the company for which to return filing history.
+	 * @param boolean $capitalDocs Flag indicating if capital documents should be returned (if available).
+	 * @return mixed An array containing the filing history inclduing document keys, or false on failure.
+	 */
+	public function companyFilingHistoryRequest($companyNumber, $capitalDocs = true) {
+
+		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
+
+			$this->setMessageClass('FilingHistory');
+			$this->setMessageQualifier('request');
+
+			$package = new XMLWriter();
+			$package->openMemory();
+			$package->setIndent(true);
+			$package->startElement('FilingHistoryRequest');
+				$package->writeElement('CompanyNumber', $companyNumber);
+				if ($capitalDocs === true) {
+					$package->writeElement('CapitalDocInd', '1');
+				}
+			$package->endElement();
+
+			$this->setMessageBody($package);
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+
+	 // Basic details...
+				$filingHistoryBody = $this->getResponseBody();
+				if (isset($filingHistoryBody->FilingHistory->FHistItem)) {
+					$filingHistory = array();
+					foreach ($filingHistoryBody->FilingHistory->FHistItem AS $historyItem) {
+						$thisHistoryItem = array('date' => (string) $historyItem->DocumentDate,
+						                         'type' => (string) $historyItem->FormType);
+						foreach ($historyItem->DocumentDesc AS $documentDescription) {
+							$thisHistoryItem['description'][] = (string) $documentDescription;
+						}
+						if (isset($historyItem->DocBeingScanned)) {
+							$thisHistoryItem['pending'] = (string) $historyItem->DocBeingScanned;
+						}
+						if (isset($historyItem->ImageKey)) {
+							$thisHistoryItem['key'] = (string) $historyItem->ImageKey;
+						}
+						$filingHistory[] = $thisHistoryItem;
+					}
+					return $filingHistory;
+				} else {
+					return false;
+				}
+
+			} else {
+				return false;
+			}
+
+		} else {
+			return false;
+		}
+
 	}
 
  /* Protected methods. */
