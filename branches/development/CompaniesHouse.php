@@ -48,6 +48,50 @@ class CompaniesHouse extends GovTalk {
  /* Public methods. */
 
 	/**
+	 * Processes a simple company NumberSearch and returns the results.
+	 *
+	 * @param string $companyNumber The number (or partial number) of the company for which to search.
+	 * @param string $dataset The dataset to search within ('LIVE', 'DISSOLVED', 'FORMER', 'PROPOSED').
+	 * @return mixed An array of companies found by the search, or false on failure.
+	 */
+	public function companyNumberSearch($companyNumber, $dataset = 'LIVE') {
+
+		if (preg_match('/[A-Z0-9]{1,8}[*]{0,1}/', $companyNumber)) {
+			$dataset = strtoupper($dataset);
+			switch ($dataset) {
+			   case 'LIVE': case 'DISSOLVED': case 'FORMER': case 'PROPOSED':
+			   
+					$this->setMessageClass('NumberSearch');
+					$this->setMessageQualifier('request');
+					$this->setMessageAuthentication('alternative');
+					
+					$package = new XMLWriter();
+					$package->openMemory();
+					$package->setIndent(true);
+					$package->startElement('NumberSearchRequest');
+						$package->writeElement('PartialCompanyNumber', $companyNumber);
+						$package->writeElement('DataSet', $dataset);
+					$package->endElement();
+					
+					$this->setMessageBody($package);
+					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+						return $this->_parseCompanySearchResult($this->getResponseBody()->NumberSearch);
+					} else {
+						return false;
+					}
+					
+			   break;
+			   default:
+				   return false;
+				break;
+			}
+		} else {
+			return false;
+		}
+
+	}
+
+	/**
 	 * Processes a simple company NameSearch and returns the results.
 	 *
 	 * @param string $companyName The name of the company for which to search.
@@ -60,19 +104,26 @@ class CompaniesHouse extends GovTalk {
 			$dataset = strtoupper($dataset);
 			switch ($dataset) {
 			   case 'LIVE': case 'DISSOLVED': case 'FORMER': case 'PROPOSED':
+			   
 					$this->setMessageClass('NameSearch');
 					$this->setMessageQualifier('request');
 					$this->setMessageAuthentication('alternative');
-					if ($bodyContent = $this->_generateNameSearchBody($companyName, $dataset)) {
-						$this->setMessageBody($bodyContent);
-						if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
-							return $this->_parseCompanySearchResult($this->getResponseBody()->NameSearch);
-						} else {
-							return false;
-						}
+
+					$package = new XMLWriter();
+					$package->openMemory();
+					$package->setIndent(true);
+					$package->startElement('NameSearchRequest');
+						$package->writeElement('CompanyName', $companyName);
+						$package->writeElement('DataSet', $dataset);
+					$package->endElement();
+
+					$this->setMessageBody($package);
+					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+						return $this->_parseCompanySearchResult($this->getResponseBody()->NameSearch);
 					} else {
 						return false;
 					}
+					
 			   break;
 			   default:
 				   return false;
@@ -134,40 +185,5 @@ class CompaniesHouse extends GovTalk {
 		}
 	
 	}
- 
-	/**
-	 * Generates the body content for a simple company NameSearch.
-	 *
-	 * @param string $companyName The name of the company for which to search.
-	 * @param string $dataset The dataset to search within ('LIVE', 'DISSOLVED', 'FORMER', 'PROPOSED').
-	 * @return mixed The XML body content (in XMLWriter format), or false on failure.
-	 */
-	private function _generateNameSearchBody($companyName, $dataset = 'LIVE') {
 	
-		if (($companyName != '') && (strlen($companyName) < 161)) {
-			$dataset = strtoupper($dataset);
-			switch ($dataset) {
-			   case 'LIVE':
-			   case 'DISSOLVED':
-			   case 'FORMER':
-			   case 'PROPOSED':
-					$package = new XMLWriter();
-					$package->openMemory();
-					$package->setIndent(true);
-					$package->startElement('NameSearchRequest');
-						$package->writeElement('CompanyName', $companyName);
-						$package->writeElement('DataSet', $dataset);
-					$package->endElement();
-					return $package;
-			   break;
-			   default:
-				   return false;
-				break;
-			}
-		} else {
-			return false;
-		}
-	
-	}
-
 }
