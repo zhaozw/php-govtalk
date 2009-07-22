@@ -254,74 +254,74 @@ class CompaniesHouse extends GovTalk {
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 
 	 // Basic details...
-				$companyDetailsBody = $this->getResponseBody();
-				$companyDetails = array('name' => (string) $companyDetailsBody->CompanyDetails->CompanyName,
-				                        'number' => (string) $companyDetailsBody->CompanyDetails->CompanyNumber,
-				                        'category' => (string) $companyDetailsBody->CompanyDetails->CompanyCategory,
-				                        'status' => (string) $companyDetailsBody->CompanyDetails->CompanyStatus,
-				                        'liquidation' => (string) $companyDetailsBody->CompanyDetails->InLiquidation,
-				                        'branchinfo' => (string) $companyDetailsBody->CompanyDetails->HasBranchInfo,
-				                        'appointments' => (string) $companyDetailsBody->CompanyDetails->HasAppointments);
+				$companyDetailsBody = $this->getResponseBody()->CompanyDetails;
+				$companyDetails = array('name' => (string) $companyDetailsBody->CompanyName,
+				                        'number' => (string) $companyDetailsBody->CompanyNumber,
+				                        'category' => (string) $companyDetailsBody->CompanyCategory,
+				                        'status' => (string) $companyDetailsBody->CompanyStatus,
+				                        'liquidation' => (string) $companyDetailsBody->InLiquidation,
+				                        'branchinfo' => (string) $companyDetailsBody->HasBranchInfo,
+				                        'appointments' => (string) $companyDetailsBody->HasAppointments);
 
 	 // Dates...
-				if (isset($companyDetailsBody->CompanyDetails->RegistrationDate)) {
-					$companyDetails['registration_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->RegistrationDate);
+				if (isset($companyDetailsBody->RegistrationDate)) {
+					$companyDetails['registration_date'] = strtotime((string) $companyDetailsBody->RegistrationDate);
 				}
-				if (isset($companyDetailsBody->CompanyDetails->DissolutionDate)) {
-					$companyDetails['dissolution_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->DissolutionDate);
+				if (isset($companyDetailsBody->DissolutionDate)) {
+					$companyDetails['dissolution_date'] = strtotime((string) $companyDetailsBody->DissolutionDate);
 				}
-				if (isset($companyDetailsBody->CompanyDetails->IncorporationDate)) {
-					$companyDetails['incorporation_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->IncorporationDate);
+				if (isset($companyDetailsBody->IncorporationDate)) {
+					$companyDetails['incorporation_date'] = strtotime((string) $companyDetailsBody->IncorporationDate);
 				}
-				if (isset($companyDetailsBody->CompanyDetails->ClosureDate)) {
-					$companyDetails['closure_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->ClosureDate);
+				if (isset($companyDetailsBody->ClosureDate)) {
+					$companyDetails['closure_date'] = strtotime((string) $companyDetailsBody->ClosureDate);
 				}
 
 	// Accounts and finance...
-				if (isset($companyDetailsBody->CompanyDetails->Accounts)) {
-					$companyDetails['accounts'] = array('overdue' => (string) $companyDetailsBody->CompanyDetails->Accounts->Overdue,
-					                                    'document' => (string) $companyDetailsBody->CompanyDetails->Accounts->DocumentAvailable);
-					if (isset($companyDetailsBody->CompanyDetails->Accounts->AccountRefDate)) {
-						$companyDetails['accounts']['reference_date'] = (string) $companyDetailsBody->CompanyDetails->Accounts->AccountRefDate;
+				if (isset($companyDetailsBody->Accounts)) {
+					$companyDetails['accounts'] = array('overdue' => (string) $companyDetailsBody->Accounts->Overdue,
+					                                    'document' => (string) $companyDetailsBody->Accounts->DocumentAvailable);
+					if (isset($companyDetailsBody->Accounts->AccountRefDate)) {
+						$companyDetails['accounts']['reference_date'] = (string) $companyDetailsBody->Accounts->AccountRefDate;
 					}
-					if (isset($companyDetailsBody->CompanyDetails->Accounts->NextDueDate)) {
-						$companyDetails['accounts']['due_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->Accounts->NextDueDate);
+					if (isset($companyDetailsBody->Accounts->NextDueDate)) {
+						$companyDetails['accounts']['due_date'] = strtotime((string) $companyDetailsBody->Accounts->NextDueDate);
 					}
-					if (isset($companyDetailsBody->CompanyDetails->Accounts->LastMadeUpDate)) {
-						$companyDetails['accounts']['last_madeup'] = strtotime((string) $companyDetailsBody->CompanyDetails->Accounts->LastMadeUpDate);
+					if (isset($companyDetailsBody->Accounts->LastMadeUpDate)) {
+						$companyDetails['accounts']['last_madeup'] = strtotime((string) $companyDetailsBody->Accounts->LastMadeUpDate);
 					}
-					if (isset($companyDetailsBody->CompanyDetails->Accounts->AccountCategory)) {
-						$companyDetails['accounts']['category'] = (string) $companyDetailsBody->CompanyDetails->Accounts->AccountCategory;
-					}
-				}
-				if (isset($companyDetailsBody->CompanyDetails->Returns)) {
-					$companyDetails['returns'] = array('overdue' => (string) $companyDetailsBody->CompanyDetails->Returns->Overdue,
-					                                   'document' => (string) $companyDetailsBody->CompanyDetails->Returns->DocumentAvailable);
-					if (isset($companyDetailsBody->CompanyDetails->Returns->NextDueDate)) {
-						$companyDetails['returns']['due_date'] = strtotime((string) $companyDetailsBody->CompanyDetails->Returns->NextDueDate);
-					}
-					if (isset($companyDetailsBody->CompanyDetails->Returns->LastMadeUpDate)) {
-						$companyDetails['returns']['last_madeup'] = strtotime((string) $companyDetailsBody->CompanyDetails->Returns->LastMadeUpDate);
+					if (isset($companyDetailsBody->Accounts->AccountCategory)) {
+						$companyDetails['accounts']['category'] = (string) $companyDetailsBody->Accounts->AccountCategory;
 					}
 				}
-				if (isset($companyDetailsBody->CompanyDetails->Mortgages)) {
-					$companyDetails['mortgage'] = array('register' => (string) $companyDetailsBody->CompanyDetails->Mortgages->MortgageInd,
-					                                    'charges' => (string) $companyDetailsBody->CompanyDetails->Mortgages->NumMortCharges,
-					                                    'outstanding' => (string) $companyDetailsBody->CompanyDetails->Mortgages->NumMortOutstanding,
-					                                    'part_satisfied' => (string) $companyDetailsBody->CompanyDetails->Mortgages->NumMortPartSatisfied,
-					                                    'fully_satisfied' => (string) $companyDetailsBody->CompanyDetails->Mortgages->NumMortSatisfied);
+				if (isset($companyDetailsBody->Returns)) {
+					$companyDetails['returns'] = array('overdue' => (string) $companyDetailsBody->Returns->Overdue,
+					                                   'document' => (string) $companyDetailsBody->Returns->DocumentAvailable);
+					if (isset($companyDetailsBody->Returns->NextDueDate)) {
+						$companyDetails['returns']['due_date'] = strtotime((string) $companyDetailsBody->Returns->NextDueDate);
+					}
+					if (isset($companyDetailsBody->Returns->LastMadeUpDate)) {
+						$companyDetails['returns']['last_madeup'] = strtotime((string) $companyDetailsBody->Returns->LastMadeUpDate);
+					}
+				}
+				if (isset($companyDetailsBody->Mortgages)) {
+					$companyDetails['mortgage'] = array('register' => (string) $companyDetailsBody->Mortgages->MortgageInd,
+					                                    'charges' => (string) $companyDetailsBody->Mortgages->NumMortCharges,
+					                                    'outstanding' => (string) $companyDetailsBody->Mortgages->NumMortOutstanding,
+					                                    'part_satisfied' => (string) $companyDetailsBody->Mortgages->NumMortPartSatisfied,
+					                                    'fully_satisfied' => (string) $companyDetailsBody->Mortgages->NumMortSatisfied);
 				}
 
 	 // Additional company details...
-				if (isset($companyDetailsBody->CompanyDetails->PreviousNames)) {
-					foreach ($companyDetailsBody->CompanyDetails->PreviousNames->CompanyName AS $previousName) {
+				if (isset($companyDetailsBody->PreviousNames)) {
+					foreach ($companyDetailsBody->PreviousNames->CompanyName AS $previousName) {
 						$companyDetails['previous_name'][] = (string) $previousName;
 					}
 				}
-				foreach ($companyDetailsBody->CompanyDetails->RegAddress->AddressLine AS $addressLine) {
+				foreach ($companyDetailsBody->RegAddress->AddressLine AS $addressLine) {
 					$companyDetails['address'][] = (string) $addressLine;
 				}
-				foreach ($companyDetailsBody->CompanyDetails->SICCodes->SicText AS $sicItem) {
+				foreach ($companyDetailsBody->SICCodes->SicText AS $sicItem) {
 					$companyDetails['sic_code'][] = (string) $sicItem;
 				}
 
@@ -364,10 +364,10 @@ class CompaniesHouse extends GovTalk {
 			$this->setMessageBody($package);
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 
-				$filingHistoryBody = $this->getResponseBody();
-				if (isset($filingHistoryBody->FilingHistory->FHistItem)) {
+				$filingHistoryBody = $this->getResponseBody()->FilingHistory;
+				if (isset($filingHistoryBody->FHistItem)) {
 					$filingHistory = array();
-					foreach ($filingHistoryBody->FilingHistory->FHistItem AS $historyItem) {
+					foreach ($filingHistoryBody->FHistItem AS $historyItem) {
 						$thisHistoryItem = array('date' => (string) $historyItem->DocumentDate,
 						                         'type' => (string) $historyItem->FormType);
 						foreach ($historyItem->DocumentDesc AS $documentDescription) {
