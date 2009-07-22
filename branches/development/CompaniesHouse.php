@@ -230,7 +230,8 @@ class CompaniesHouse extends GovTalk {
  /* Details methods. */
 	
 	/**
-	 * Processes a company DetailsRequest and returns the results.
+	 * Gets information about the specified company. Processes a company
+	 * DetailsRequest and returns the results.
 	 *
 	 * @param string $companyNumber The number of the company for which to return details.
 	 * @param boolean $mortgageTotals Flag indicating if mortgage totals should be returned (if available).
@@ -342,6 +343,103 @@ class CompaniesHouse extends GovTalk {
 	}
 	
 	/**
+	 * Gets information about the specified company officer. Processes a company
+	 * DetailsRequest and returns the results.
+	 *
+	 * @param string $personId The ID of the person about whom to return details.
+	 * @param string $reference The user reference which will be quoted in the billing breakdown.
+	 * @return mixed An array of data about the officer, or false on failure.
+	 */
+	public function officerDetails($personId, $reference) {
+	
+		if (($personId != '') && (($reference != '') && (strlen($reference) < 25))) {
+		
+			$this->setMessageClass('OfficerDetails');
+			$this->setMessageQualifier('request');
+			
+			$package = new XMLWriter();
+			$package->openMemory();
+			$package->setIndent(true);
+			$package->startElement('OfficerDetailsRequest');
+				$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/OfficerDetails.xsd');
+				$package->writeElement('PersonID', $personId);
+				$package->writeElement('UserReference', $reference);
+			$package->endElement();
+			
+			$this->setMessageBody($package);
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+				$officerDetailsBody = $this->getResponseBody()->OfficerDetails;
+				
+	 // Personal details...
+				$officerDetails = array('title' => (string) $officerDetailsBody->Person->Title,
+				                        'honours' => (string) $officerDetailsBody->Person->Honours,
+				                        'surname' => (string) $officerDetailsBody->Person->Surname,
+				                        'dob' => strtotime((string) $officerDetailsBody->Person->DOB),
+				                        'nationality' => (string) $officerDetailsBody->Person->Nationality);
+				if (isset($officerDetailsBody->Person->Forename)) {
+					if (count($officerDetailsBody->Person->Forename) > 1) {
+						foreach ($officerDetailsBody->Person->Forename AS $forename) {
+							$officerDetails['forename'][] = (string) $forename;
+						}
+					} else {
+						$officerDetails['forename'] = (string) $officerDetailsBody->Person->Forename;
+					}
+				}
+				
+	 // Appointments...
+				if (isset($officerDetailsBody->OfficerAppt)) {
+					$officerDetails['company'] = array();
+					foreach ($officerDetailsBody->OfficerAppt AS $appointment) {
+						$arrayKey = (string) $appointment->CompanyNumber;
+						if (!array_key_exists($arrayKey, $officerDetails['company'])) {
+							$officerDetails['company'][$arrayKey] = array('name' => (string) $appointment->CompanyName,
+							                                                  'number' => (string) $appointment->CompanyNumber,
+							                                                  'status' => (string) $appointment->CompanyStatus);
+						}
+						$thisAppointment = array('type' => (string) $appointment->AppointmentType,
+						                         'status' => (string) $appointment->AppointmentStatus,
+						                         'date' =>  strtotime((string) $appointment->AppointmentDate));
+						if (isset($appointment->ResignationDate)) {
+							$thisAppointment['resignation'] = strtotime((string) $appointment->ResignationDate);
+						}
+						if (isset($appointment->Occupation)) {
+							$thisAppointment['occupation'] = (string) $appointment->Occupation;
+						}
+						$officerDetails['company'][$arrayKey]['appointment'][] = $thisAppointment;
+					}
+				}
+				
+	 // Disqualifcations...
+				if (isset($officerDetailsBody->OfficerDisq)) {
+					foreach ($officerDetailsBody->OfficerDisq AS $disqualifcation) {
+						$thisDisqualifcation = array('reason' => (string) $disqualifcation->DisqReason,
+						                             'start' => strtotime((string) $disqualifcation->StartDate),
+						                             'end' => strtotime((string) $disqualifcation->EndDate));
+						if (isset($disqualifcation->Exemption)) {
+							foreach ($disqualifcation->Exemption AS $exemption) {
+								$thisDisqualifcation['exemption'][] = array('name' => $exemption->CompanyName,
+								                                            'number' => $exemption->CompanyNumber,
+								                                            'start' => strtotime((string) $exemption->StartDate),
+								                                            'end' => strtotime((string) $exemption->EndDate));
+							}
+						}
+						$officerDetails['disqualifcation'][] = $thisDisqualifcation;
+					}
+				}
+				
+				return $officerDetails;
+				
+			} else {
+				return false;
+			}
+			
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
 	 * Processes a company FilingHistoryRequest and returns the results.
 	 *
 	 * @param string $companyNumber The number of the company for which to return filing history.
@@ -367,7 +465,6 @@ class CompaniesHouse extends GovTalk {
 			$package->endElement();
 			
 			$this->setMessageBody($package);
-			
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 
 				$filingHistoryBody = $this->getResponseBody()->FilingHistory;
