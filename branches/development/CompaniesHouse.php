@@ -365,8 +365,9 @@ class CompaniesHouse extends GovTalk {
 					$package->writeElement('CapitalDocInd', '1');
 				}
 			$package->endElement();
-
+			
 			$this->setMessageBody($package);
+			
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 
 				$filingHistoryBody = $this->getResponseBody()->FilingHistory;
