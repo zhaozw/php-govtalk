@@ -74,6 +74,7 @@ class CompaniesHouse extends GovTalk {
 					$package->openMemory();
 					$package->setIndent(true);
 					$package->startElement('NameSearchRequest');
+						$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/NameSearch.xsd');
 						$package->writeElement('CompanyName', $companyName);
 						$package->writeElement('DataSet', $dataset);
 					$package->endElement();
@@ -118,6 +119,7 @@ class CompaniesHouse extends GovTalk {
 					$package->openMemory();
 					$package->setIndent(true);
 					$package->startElement('NumberSearchRequest');
+						$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/NumberSearch.xsd');
 						$package->writeElement('PartialCompanyNumber', $companyNumber);
 						$package->writeElement('DataSet', $dataset);
 					$package->endElement();
@@ -170,6 +172,7 @@ class CompaniesHouse extends GovTalk {
 					$package->openMemory();
 					$package->setIndent(true);
 					$package->startElement('OfficerSearchRequest');
+						$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/OfficerSearch.xsd');
 						$package->writeElement('Surname', $officerSurname);
 						$package->writeElement('OfficerType', $officerType);
 						if ($forename !== null) {
@@ -244,6 +247,7 @@ class CompaniesHouse extends GovTalk {
 			$package->openMemory();
 			$package->setIndent(true);
 			$package->startElement('CompanyDetailsRequest');
+				$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/CompanyDetails.xsd');
 				$package->writeElement('CompanyNumber', $companyNumber);
 				if ($mortgageTotals === true) {
 					$package->writeElement('GiveMortTotals', '1');
@@ -355,6 +359,7 @@ class CompaniesHouse extends GovTalk {
 			$package->openMemory();
 			$package->setIndent(true);
 			$package->startElement('FilingHistoryRequest');
+				$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/FilingHistory.xsd');
 				$package->writeElement('CompanyNumber', $companyNumber);
 				if ($capitalDocs === true) {
 					$package->writeElement('CapitalDocInd', '1');
