@@ -34,7 +34,8 @@ class CompaniesHouse extends GovTalk {
  /* Magic methods. */
 
 	/**
-	 * Instance constructor.  Contains a hard-coded CH XMLGW URL.
+	 * Instance constructor.  Contains a hard-coded CH XMLGW URL and additional
+	 * schema location.
 	 *
 	 * @param string $govTalkSenderId GovTalk sender ID.
 	 * @param string $govTalkPassword GovTalk password.
@@ -52,7 +53,8 @@ class CompaniesHouse extends GovTalk {
  /* Search methods. */
  
 	/**
-	 * Processes a simple company NameSearch and returns the results.
+	 * Searches for companies with a registered name matching or similar to the
+	 * given company name. Processes a company NameSearch and returns the results.
 	 *
 	 * @param string $companyName The name of the company for which to search.
 	 * @param string $dataset The dataset to search within ('LIVE', 'DISSOLVED', 'FORMER', 'PROPOSED').
@@ -95,7 +97,8 @@ class CompaniesHouse extends GovTalk {
 	}
 	
 	/**
-	 * Processes a simple company NumberSearch and returns the results.
+	 * Searches for companies matching the given company number.  Processes a
+	 * company NumberSearch and returns the results.
 	 *
 	 * @param string $companyNumber The number (or partial number) of the company for which to search.
 	 * @param string $dataset The dataset to search within ('LIVE', 'DISSOLVED', 'FORMER', 'PROPOSED').
@@ -135,6 +138,90 @@ class CompaniesHouse extends GovTalk {
 			return false;
 		}
 
+	}
+	
+	/**
+	 * Searches for company officers matching the given criterion. Processes a
+	 * company OfficerSearch and returns the results.
+	 *
+	 * The officer search may be restricted by officer type by passing one of the
+	 * following as the second argument:
+	 *   * DIS - Disqualified directors.
+	 *   * LLP - Limited Liability partnerships.
+	 *   * CUR - None of the above (default).
+	 *   * EUR - SE and ES apointments only.
+	 *
+	 * @param string $officerSurname The surname of the officer for which to search.
+	 * @param mixed $forename The forename(s) of the officer for which to search. If an array is passed all forenames will be used.
+	 * @param string $officerType The type of officer for which to search (CUR, LLP, DIS, EUR).
+	 * @param string $postTown The post town of the officer for which to search.
+	 * @return mixed An array 'exact' => the match marked as nearest by CH, 'match' => all matches returned by CH, or false on failure.
+	 */
+	function companyOfficerSearch($officerSurname, $forename = null, $officerType = 'CUR', $postTown = null) {
+	
+		if ($officerSurname != '') {
+			switch ($officerType) {
+				case 'DIS': case 'LLP': case 'CUR': case 'EUR':
+				
+					$this->setMessageClass('OfficerSearch');
+					$this->setMessageQualifier('request');
+					
+					$package = new XMLWriter();
+					$package->openMemory();
+					$package->setIndent(true);
+					$package->startElement('OfficerSearchRequest');
+						$package->writeElement('Surname', $officerSurname);
+						$package->writeElement('OfficerType', $officerType);
+						if ($forename !== null) {
+							if (is_array($forename)) {
+								$forenameCount = 0;
+								foreach ($forename AS $singleForename) {
+									$package->writeElement('Forename', $singleForename);
+									if (++$forenameCount == 2) {
+										break;
+									}
+								}
+							} else {
+								$package->writeElement('Forename', $forename);
+							}
+						}
+						if ($postTown !== null) {
+							$package->writeElement('PostTown', $postTown);
+						}
+					$package->endElement();
+					
+					$this->setMessageBody($package);
+					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+						$nearestOfficer = $possibleOfficers = array();
+						$officerSearchBody = $this->getResponseBody()->OfficerSearch;
+						foreach ($officerSearchBody->OfficerSearchItem AS $officerDetails) {
+							$thisOfficerDetails = array('id' => (string) $officerDetails->PersonID,
+							                            'title' => (string) $officerDetails->Title,
+							                            'surname' => (string) $officerDetails->Surname,
+							                            'forename' => (string) $officerDetails->Forename,
+							                            'dob' => strtotime((string) $officerDetails->DOB),
+							                            'posttown' => (string) $officerDetails->PostTown,
+							                            'postcode' => (string) $officerDetails->Postcode);
+	                  $possibleOfficers[] = $thisOfficerDetails;
+							if (isset($officerDetails->SearchMatch) && ((string) $officerDetails->SearchMatch == 'NEAR')) {
+								$nearestOfficer = $thisOfficerDetails;
+							}
+						}
+						return array('exact' => $nearestOfficer,
+						             'match' => $possibleOfficers);
+					} else {
+						return false;
+					}
+					
+				break;
+				default:
+					return false;
+				break;
+			}
+		} else {
+			return false;
+		}
+	
 	}
 	
  /* Details methods. */
@@ -345,11 +432,11 @@ class CompaniesHouse extends GovTalk {
 		if (is_object($companySearchBody) && is_a($companySearchBody, 'SimpleXMLElement')) {
 			$exactCompany = $possibleCompanies = array();
 			foreach ($companySearchBody->CoSearchItem AS $possibleCompany) {
-				$possibleCompanies[] = array('name' => (string) $possibleCompany->CompanyName,
-				                             'number' => (string) $possibleCompany->CompanyNumber);
+				$thisCompanyDetails = array('name' => (string) $possibleCompany->CompanyName,
+				                            'number' => (string) $possibleCompany->CompanyNumber);
+				$possibleCompanies[] = $thisCompanyDetails;
 				if (isset($possibleCompany->SearchMatch) && ((string) $possibleCompany->SearchMatch == 'EXACT')) {
-					$exactCompany = array('name' => (string) $possibleCompany->CompanyName,
-					                      'number' => (string) $possibleCompany->CompanyNumber);
+					$exactCompany = $thisCompanyDetails;
 				}
 			}
 			return array('exact' => $exactCompany,
