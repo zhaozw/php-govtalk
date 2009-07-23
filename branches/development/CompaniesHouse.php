@@ -154,12 +154,12 @@ class CompaniesHouse extends GovTalk {
 	 *   * EUR - SE and ES apointments only.
 	 *
 	 * @param string $officerSurname The surname of the officer for which to search.
-	 * @param mixed $forename The forename(s) of the officer for which to search. If an array is passed all forenames will be used.
+	 * @param mixed $officerForename The forename(s) of the officer for which to search. If an array is passed all forenames will be used.
 	 * @param string $officerType The type of officer for which to search (CUR, LLP, DIS, EUR).
 	 * @param string $postTown The post town of the officer for which to search.
 	 * @return mixed An array 'exact' => the match marked as nearest by CH, 'match' => all matches returned by CH, or false on failure.
 	 */
-	function companyOfficerSearch($officerSurname, $forename = null, $officerType = 'CUR', $postTown = null) {
+	function companyOfficerSearch($officerSurname, $officerForename = null, $officerType = 'CUR', $postTown = null) {
 	
 		if ($officerSurname != '') {
 			switch ($officerType) {
@@ -175,17 +175,17 @@ class CompaniesHouse extends GovTalk {
 						$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/OfficerSearch.xsd');
 						$package->writeElement('Surname', $officerSurname);
 						$package->writeElement('OfficerType', $officerType);
-						if ($forename !== null) {
-							if (is_array($forename)) {
+						if ($officerForename !== null) {
+							if (is_array($officerForename)) {
 								$forenameCount = 0;
-								foreach ($forename AS $singleForename) {
+								foreach ($officerForename AS $singleForename) {
 									$package->writeElement('Forename', $singleForename);
 									if (++$forenameCount == 2) {
 										break;
 									}
 								}
 							} else {
-								$package->writeElement('Forename', $forename);
+								$package->writeElement('Forename', $officerForename);
 							}
 						}
 						if ($postTown !== null) {
