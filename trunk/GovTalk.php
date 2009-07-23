@@ -727,8 +727,9 @@ class GovTalk {
 						$package->startElement('GovTalkMessage');
 						$xsiSchemaLocation = 'http://www.govtalk.gov.uk/documents/envelope-v2-0.xsd';
 						if ($this->_additionalXsiSchemaLocation !== null) {
-							$xsiSchemaLocation .= ' http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd';
+							$xsiSchemaLocation .= ' '.$this->_additionalXsiSchemaLocation;
 						}
+						$package->writeAttribute('xmlns', 'http://www.govtalk.gov.uk/CM/envelope');
 						$package->writeAttributeNS('xsi', 'schemaLocation', 'http://www.w3.org/2001/XMLSchema-instance', $xsiSchemaLocation);
 							$package->writeElement('EnvelopeVersion', '2.0');
 							
