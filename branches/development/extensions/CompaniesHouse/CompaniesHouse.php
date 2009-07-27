@@ -18,7 +18,7 @@
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-require_once('GovTalk.php');
+require_once('../../../GovTalk.php');
 
 /**
  * Companies House API client.  Extends the functionality provided by the
