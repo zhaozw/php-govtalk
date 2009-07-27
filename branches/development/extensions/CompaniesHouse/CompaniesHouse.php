@@ -18,8 +18,7 @@
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-
-require_once('../../GovTalk.php');
+require_once('GovTalk.php');
 
 /**
  * Companies House API client.  Extends the functionality provided by the
@@ -446,7 +445,7 @@ class CompaniesHouse extends GovTalk {
 	 * @param boolean $capitalDocs Flag indicating if capital documents should be returned (if available).
 	 * @return mixed An array containing the filing history inclduing document keys, or false on failure.
 	 */
-	public function companyFilingHistory($companyNumber, $capitalDocs = false) {
+	public function filingHistory($companyNumber, $capitalDocs = false) {
 
 		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
 
@@ -497,6 +496,55 @@ class CompaniesHouse extends GovTalk {
 			return false;
 		}
 
+	}
+	
+	/**
+	 * Gets information about a specific document returned by the filing history
+	 * call. Processes a DocumentInfoRequest call and returns the results.
+	 *
+	 * @param string $companyNumber The number of the company for which to return the document information.
+	 * @param boolean $companyName The name of the company for which to return the document information.
+	 * @param boolean $imageKey The key returned from a filing history request of the document in question.
+	 * @return mixed An array containing information on the document in question, or false on failure.
+	 */
+	public function documentInfo($companyNumber, $companyName, $imageKey) {
+	
+		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber) && (($companyName != '') && (strlen($companyName) < 161))) {
+		
+			$this->setMessageClass('DocumentInfo');
+			$this->setMessageQualifier('request');
+			
+			$package = new XMLWriter();
+			$package->openMemory();
+			$package->setIndent(true);
+			$package->startElement('DocumentInfoRequest');
+				$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/CompanyDocument.xsd');
+				$package->writeElement('CompanyNumber', $companyNumber);
+				$package->writeElement('CompanyName', $companyName);
+				$package->writeElement('ImageKey', $imageKey);
+			$package->endElement();
+			
+			$this->setMessageBody($package);
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+			
+				$documentInfoBody = $this->getResponseBody()->DocumentInfo;
+				$documentInfo = array('type' => (string) $documentInfoBody->FormType,
+				                      'pages' => (string) $documentInfoBody->NumPages,
+				                      'status' => (string) $documentInfoBody->Media,
+				                      'key' => (string) $documentInfoBody->DocRequestKey);
+				if (isset($documentInfoBody->MadeUpDate)) {
+					$documentInfo['date'] = strtotime((string) $documentInfoBody->MadeUpDate);
+				}
+				return $documentInfo;
+				
+			} else {
+				return false;
+			}
+			
+		} else {
+			return false;
+		}
+	
 	}
 
  /* Protected methods. */
