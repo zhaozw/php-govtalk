@@ -44,6 +44,7 @@ class CompaniesHouse extends GovTalk {
 		parent::__construct('http://xmlgw.companieshouse.gov.uk/v1-0/xmlgw/Gateway', $govTalkSenderId, $govTalkPassword);
 		$this->setSchemaLocation('http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd');
 		$this->setMessageAuthentication('alternative');
+		$this->setMessageQualifier('request');
 
 	}
 
@@ -67,7 +68,6 @@ class CompaniesHouse extends GovTalk {
 			   case 'LIVE': case 'DISSOLVED': case 'FORMER': case 'PROPOSED':
 			   
 					$this->setMessageClass('NameSearch');
-					$this->setMessageQualifier('request');
 
 					$package = new XMLWriter();
 					$package->openMemory();
@@ -112,7 +112,6 @@ class CompaniesHouse extends GovTalk {
 			   case 'LIVE': case 'DISSOLVED': case 'FORMER': case 'PROPOSED':
 
 					$this->setMessageClass('NumberSearch');
-					$this->setMessageQualifier('request');
 
 					$package = new XMLWriter();
 					$package->openMemory();
@@ -165,7 +164,6 @@ class CompaniesHouse extends GovTalk {
 				case 'DIS': case 'LLP': case 'CUR': case 'EUR':
 				
 					$this->setMessageClass('OfficerSearch');
-					$this->setMessageQualifier('request');
 					
 					$package = new XMLWriter();
 					$package->openMemory();
@@ -241,7 +239,6 @@ class CompaniesHouse extends GovTalk {
 		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
 
 			$this->setMessageClass('CompanyDetails');
-			$this->setMessageQualifier('request');
 			
 			$package = new XMLWriter();
 			$package->openMemory();
@@ -354,7 +351,6 @@ class CompaniesHouse extends GovTalk {
 		if (($personId != '') && (($reference != '') && (strlen($reference) < 25))) {
 		
 			$this->setMessageClass('OfficerDetails');
-			$this->setMessageQualifier('request');
 			
 			$package = new XMLWriter();
 			$package->openMemory();
@@ -450,7 +446,6 @@ class CompaniesHouse extends GovTalk {
 		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
 
 			$this->setMessageClass('FilingHistory');
-			$this->setMessageQualifier('request');
 
 			$package = new XMLWriter();
 			$package->openMemory();
@@ -512,7 +507,6 @@ class CompaniesHouse extends GovTalk {
 		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber) && (($companyName != '') && (strlen($companyName) < 161))) {
 		
 			$this->setMessageClass('DocumentInfo');
-			$this->setMessageQualifier('request');
 			
 			$package = new XMLWriter();
 			$package->openMemory();
@@ -562,7 +556,6 @@ class CompaniesHouse extends GovTalk {
 		if (($documentKey != '') && (($reference != '') && (strlen($reference) < 25))) {
 		
 			$this->setMessageClass('Document');
-			$this->setMessageQualifier('request');
 			
 			$package = new XMLWriter();
 			$package->openMemory();
