@@ -346,7 +346,7 @@ class CompaniesHouse extends GovTalk {
 	 * DetailsRequest and returns the results.
 	 *
 	 * @param string $personId The ID of the person about whom to return details.
-	 * @param string $reference The user reference which will be quoted in the billing breakdown.
+	 * @param string $reference A user reference which will be quoted in the billing breakdown.
 	 * @return mixed An array of data about the officer, or false on failure.
 	 */
 	public function officerDetails($personId, $reference) {
@@ -539,6 +539,43 @@ class CompaniesHouse extends GovTalk {
 				
 			} else {
 				return false;
+			}
+			
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Requests a document from the document ordering system. As documents may
+	 * take time to prepare this function returns the FTP location used to fetch
+	 * the document image, as well as a poll interval (in seconds) which should
+	 * be used to re-poll the server until the document is ready.
+	 *
+	 * @param string $documentKey The key provided by a document info request identifying the document in question.
+	 * @param string $reference A user reference which will be quoted in the billing breakdown.
+	 * @return mixed An array of the document endpoint and retry interval, or false on failure.
+	 */
+	public function documentRequest($documentKey, $reference) {
+	
+		if (($documentKey != '') && (($reference != '') && (strlen($reference) < 25))) {
+		
+			$this->setMessageClass('Document');
+			$this->setMessageQualifier('request');
+			
+			$package = new XMLWriter();
+			$package->openMemory();
+			$package->setIndent(true);
+			$package->startElement('DocumentRequest');
+				$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/CompanyDocument.xsd');
+				$package->writeElement('DocRequestKey', $documentKey);
+				$package->writeElement('UserReference', $reference);
+			$package->endElement();
+			
+			$this->setMessageBody($package);
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+				return $this->getResponseEndpoint();
 			}
 			
 		} else {

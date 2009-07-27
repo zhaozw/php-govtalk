@@ -285,6 +285,33 @@ class GovTalk {
 	}
 	
 	/**
+	 * Returns information from the Gateway ResponseEndPoint including recomended
+	 * retry times, if there is one.
+	 *
+	 * @return array The Gateway endpoint and retry interval, or false if this isn't set.
+	 */
+	public function getResponseEndpoint() {
+	
+		if (isset($this->_fullResponseObject)) {
+			if (isset($this->_fullResponseObject->Header->MessageDetails->ResponseEndPoint)) {
+				if (isset($this->_fullResponseObject->Header->MessageDetails->ResponseEndPoint['PollInterval'])) {
+					$pollInterval = (string) $this->_fullResponseObject->Header->MessageDetails->ResponseEndPoint['PollInterval'];
+				} else {
+					$pollInterval = null;
+				}
+				$endpoint = (string) $this->_fullResponseObject->Header->MessageDetails->ResponseEndPoint;
+				return array('endpoint' => $endpoint,
+				             'interval' => $pollInterval);
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
 	 * Returns the contents of the response Body section, removing all GovTalk
 	 * Message Envelope wrappers, as a SimpleXML object.
 	 *
