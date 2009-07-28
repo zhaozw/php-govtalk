@@ -158,11 +158,11 @@ class GovTalk {
  /* System / internal variables. */
 
 	/**
-	 * Transaction ID of the last message sent.
+	 * Transaction ID of the last message sent / received.
 	 *
 	 * @var string
 	 */
-	private $_lastTransactionId = null;
+	private $_transactionId = null;
 
  /* Magic methods. */
 
@@ -208,13 +208,13 @@ class GovTalk {
  /* System / internal get methods. */
 
 	/**
-	 * Returns the transaction ID used in the last message sent.
+	 * Returns the transaction ID used in the last message sent / received.
 	 *
 	 * @return string Transaction ID.
 	 */
-	public function getLastTransactionId() {
+	public function getTransactionId() {
 
-		return $this->_lastTransactionId;
+		return $this->_transactionId;
 
 	}
 
@@ -743,7 +743,7 @@ class GovTalk {
 			if (isset($this->_govTalkSenderId) && isset($this->_govTalkPassword)) {
 				if (isset($this->_messageAuthType)) {
 	 // Generate the transaction ID...
-				$transactionId = $this->_generateTransactionId();
+					$this->_generateTransactionId();
 					if (isset($this->_messageBody)) {
 	 // Create the XML document (in memory)...
 						$package = new XMLWriter();
@@ -770,7 +770,7 @@ class GovTalk {
 									if ($this->_messageFunction !== null) {
 										$package->writeElement('Function', $this->_messageFunction);
 									}
-									$package->writeElement('TransactionID', $transactionId);
+									$package->writeElement('TransactionID', $this->_transactionId);
 									if ($this->_messageCorrelationId !== null) {
 										$package->writeElement('CorrelationID', $this->_messageCorrelationId);
 									}
@@ -786,7 +786,7 @@ class GovTalk {
 										$package->startElement('Authentication');
 										switch ($this->_messageAuthType) {
 											case 'alternative':
-												if ($authenticationArray = $this->generateAlternativeAuthentication($transactionId)) {
+												if ($authenticationArray = $this->generateAlternativeAuthentication($this->_transactionId)) {
 													$package->writeElement('Method', $authenticationArray['method']);
 													$package->writeElement('Value', $authenticationArray['token']);
 												} else {
@@ -891,11 +891,12 @@ class GovTalk {
 	 * IDs. Therefore this implementation generates only a numeric transaction
 	 * ID.
 	 *
-	 * @return string A numeric transaction ID valid for use in TransactionID.
+	 * @return boolean Always returns true.
 	 */
 	private function _generateTransactionId() {
 
-		return str_replace('.', '', microtime(true));
+		$this->_transactionId = str_replace('.', '', microtime(true));
+		return true;
 
 	}
 
