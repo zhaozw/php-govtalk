@@ -139,6 +139,15 @@ class GovTalk {
 	 * @var array
 	 */
 	private $_messageChannelRouting = array();
+	
+ /* Target details related variables. */
+
+	/**
+	 * GovTalk target details / organisations array.
+	 *
+	 * @var array
+	 */
+	private $_messageTargetDetails = array();
 
  /* Full request/response data variables. */
  
@@ -529,8 +538,9 @@ class GovTalk {
 	 * values are 'XML', 'HTML', or 'text'. The default is XML.
 	 *
 	 * Note: setting this to anything other than XML will limit the functionality
-	 * of the GovTalk class as it is not currently able to parse HTML or text
-	 * documents. You are advised against changing this value from the default.
+	 * of the GovTalk class and some extensions as they are not currently able to
+	 * parse HTML or text documents. You are advised against changing this value
+	 * from the default.
 	 *
 	 * @param string $messageCorrelationId The correlation ID to set.
 	 * @return boolean True if the CorrelationID is valid and set, false if it's invalid (and therefore not set).
@@ -664,7 +674,7 @@ class GovTalk {
 	 */
 	public function addMessageKey($keyType, $keyValue) {
 	
-		if (is_string($keyType) && is_string($keyValue)) {
+		if (is_string($keyType) && $keyValue != '') {
 			$this->_govTalkKeys[] = array('type' => $keyType,
 			                              'value' => $keyValue);
 			return true;
@@ -675,7 +685,7 @@ class GovTalk {
 	}
 	
 	/**
-	 * Removed a key-value pair from the set of keys to be sent with the message
+	 * Remove a key-value pair from the set of keys to be sent with the message
 	 * as part of the GovTalkDetails element.
 	 *
 	 * Searching is done primarily on key type (type attribute) and all keys with
@@ -714,6 +724,64 @@ class GovTalk {
 	public function resetMessageKeys() {
 	
 		$this->_govTalkKeys = array();
+		return true;
+	
+	}
+	
+ /* Target details related methods. */
+ 
+	/**
+	 * Add an organisation to the TargetDetails section of the GovTalkDetail
+	 * element.
+	 *
+	 * @param string $targetOrganisation The organisation to be added.
+	 * @return boolean True if the key is valid and added, false if it's not valid (and therefore not added).
+	 */
+	public function addTargetOrganisation($targetOrganisation) {
+	
+		if (($targetOrganisation != '') && (strlen($targetOrganisation) < 65)) {
+			$this->_messageTargetDetails[] = $targetOrganisation;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Remove an organisation from TargetDetails section of the GovTalkDetail
+	 * element.
+	 *
+	 * If more than one organisation matches the given organisation name all are
+	 * removed.
+	 *
+	 * @param string $targetOrganisation The organisation to be deleted.
+	 * @return integer The number of organisations deleted.
+	 */
+	public function deleteTargetOrganisation($targetOrganisation) {
+	
+		if (($targetOrganisation != '') && (strlen($targetOrganisation) < 65)) {
+			$deletedCount = 0;
+			foreach ($this->_messageTargetDetails AS $key => $organisation) {
+				if ($organisation == $targetOrganisation) {
+					$deletedCount++;
+					unset($this->_messageTargetDetails[$key]);
+				}
+			}
+			return $deletedCount;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Removes all GovTalkDetails TargetDetails organisations.
+	 *
+	 * @return boolean Always returns true.
+	 */
+	public function resetTargetOrganisations() {
+	
+		$this->_messageTargetDetails = array();
 		return true;
 	
 	}
@@ -884,6 +952,15 @@ class GovTalk {
 										$package->endElement(); # Key
 									}
 									$package->endElement(); # Keys
+								}
+								
+	 // Target details...
+								if (count($this->_messageTargetDetails) > 0) {
+									$package->startElement('TargetDetails');
+									foreach ($this->_messageTargetDetails AS $targetOrganisation) {
+										$package->writeElement('Organisation', $targetOrganisation);
+									}
+									$package->endElement(); # TargetDetails
 								}
 							
 	 // Channel routing...
