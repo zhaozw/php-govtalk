@@ -285,6 +285,27 @@ class GovTalk {
 	}
 	
 	/**
+	 * Returns the correlation ID issued by the Gateway in the last response, if
+	 * there was one.  Once an ID has been assigned by the Gateway, any
+	 * subsequent communications regarding a message much include it.
+	 *
+	 * @return integer The Gateway timestamp as a unix timestamp, or false if this isn't set.
+	 */
+	public function getResponseCorrelationId() {
+
+		if (isset($this->_fullResponseObject)) {
+			if (isset($this->_fullResponseObject->Header->MessageDetails->CorrelationID)) {
+				return (string) $this->_fullResponseObject->Header->MessageDetails->CorrelationID;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+
+	}
+	
+	/**
 	 * Returns information from the Gateway ResponseEndPoint including recomended
 	 * retry times, if there is one.
 	 *
@@ -305,22 +326,6 @@ class GovTalk {
 			} else {
 				return false;
 			}
-		} else {
-			return false;
-		}
-	
-	}
-	
-	/**
-	 * Returns the contents of the response Body section, removing all GovTalk
-	 * Message Envelope wrappers, as a SimpleXML object.
-	 *
-	 * @return mixed The message body as a SimpleXML object, or false if this isn't set.
-	 */
-	public function getResponseBody() {
-	
-		if (isset($this->_fullResponseObject)) {
-			return $this->_fullResponseObject->Body;
 		} else {
 			return false;
 		}
@@ -355,6 +360,22 @@ class GovTalk {
 			return false;
 		}
 
+	}
+	
+	/**
+	 * Returns the contents of the response Body section, removing all GovTalk
+	 * Message Envelope wrappers, as a SimpleXML object.
+	 *
+	 * @return mixed The message body as a SimpleXML object, or false if this isn't set.
+	 */
+	public function getResponseBody() {
+	
+		if (isset($this->_fullResponseObject)) {
+			return $this->_fullResponseObject->Body;
+		} else {
+			return false;
+		}
+	
 	}
 
  /* General envelope related set methods. */
@@ -481,10 +502,12 @@ class GovTalk {
 	 *
 	 * @param string $messageCorrelationId The correlation ID to set.
 	 * @return boolean True if the CorrelationID is valid and set, false if it's invalid (and therefore not set).
+	 * @see function getResponseCorrelationId
 	 */
 	public function setMessageCorrelationId($messageCorrelationId) {
 
-	 // TODO: Track message correlation ids internally?
+	 // CorrelationIDs need to be set externally (to cope with things like
+	 // database tracked requests), so we can't automate correlation tracking.
 		if (strlen($messageCorrelationId) <= 32) {
 			$this->_messageCorrelationId = $messageCorrelationId;
 			return true;
