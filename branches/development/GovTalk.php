@@ -100,6 +100,12 @@ class GovTalk {
 	 * @var string
 	 */
 	private $_messageCorrelationId = null;
+	/**
+	 * GovTalk message Transformation.  Default is null, return in standard XML.
+	 *
+	 * @var string
+	 */
+	private $_messageTransformation = 'XML';
 	
  /* SenderDetails related variables. */
 	
@@ -484,14 +490,15 @@ class GovTalk {
 	}
 	
 	/**
-	 * Sets the message Function for use in MessageDetails header.
+	 * Sets the message Function for use in MessageDetails header. This function
+	 * is designed to be extended by department-specific extensions to validate
+	 * the possible options for message function, although can be used as-is.
 	 *
 	 * @param string $messageFunction The function to set.
 	 * @return boolean True if the Function is valid and set, false if it's invalid (and therefore not set).
 	 */
 	public function setMessageFunction($messageFunction) {
 	
-	 // TODO: Limit the possible values for Function.
 		$this->_messageFunction = $messageFunction;
 		return true;
 
@@ -515,6 +522,34 @@ class GovTalk {
 			return false;
 		}
 
+	}
+	
+	/**
+	 * Sets the message Transformation for use in MessageDetails header. Possible
+	 * values are 'XML', 'HTML', or 'text'. The default is XML.
+	 *
+	 * Note: setting this to anything other than XML will limit the functionality
+	 * of the GovTalk class as it is not currently able to parse HTML or text
+	 * documents. You are advised against changing this value from the default.
+	 *
+	 * @param string $messageCorrelationId The correlation ID to set.
+	 * @return boolean True if the CorrelationID is valid and set, false if it's invalid (and therefore not set).
+	 * @see function getResponseCorrelationId
+	 */
+	public function setMessageTransformation($transformation) {
+	
+		switch ($transformation) {
+			case 'XML':
+			case 'HTML':
+			case 'text':
+				$this->_messageTransformation = $transformation;
+				return true;
+			break;
+			default:
+				return false;
+			break;
+		}
+	
 	}
 	
  /* SenderDetails related set methods. */
@@ -576,9 +611,9 @@ class GovTalk {
 	 * Applications using php-govtalk should <i>always</i> add at least one
 	 * additional channel route before sending a message to the Gateway.
 	 *
-	 * Note: php-govtalk will add itself as the last route in the chain.  This
-	 * is to identify the library to the Gateway and to assist in tracking down
-	 * issues caused by the library itself.
+	 * Note: php-govtalk will always add itself as the last route in the chain.
+	 * This is to identify the library to the Gateway and to assist in tracking
+	 * down issues caused by the library itself.
 	 *
 	 * @param string $uri The URI of the owner of the process being added to the route.
 	 * @param string $softwareName The name of the software generating this route entry.
@@ -722,7 +757,9 @@ class GovTalk {
 
 			if ($gatewayResponse !== false) {
 				$this->_fullResponseString = $gatewayResponse;
-				$this->_fullResponseObject = simplexml_load_string($gatewayResponse);
+				if ($this->_messageTransformation == 'XML') {
+					$this->_fullResponseObject = simplexml_load_string($gatewayResponse);
+				}
 				return true;
 			} else {
 				return false;
@@ -796,6 +833,9 @@ class GovTalk {
 									$package->writeElement('TransactionID', $this->_transactionId);
 									if ($this->_messageCorrelationId !== null) {
 										$package->writeElement('CorrelationID', $this->_messageCorrelationId);
+									}
+									if ($this->_messageTransformation !== 'XML') {
+										$package->writeElement('Transformation', $this->_messageTransformation);
 									}
 									$package->writeElement('GatewayTest', $this->_govTalkTest);
 								$package->endElement(); # MessageDetails
