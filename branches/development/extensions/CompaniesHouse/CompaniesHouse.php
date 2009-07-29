@@ -33,8 +33,9 @@ class CompaniesHouse extends GovTalk {
  /* Magic methods. */
 
 	/**
-	 * Instance constructor.  Contains a hard-coded CH XMLGW URL and additional
-	 * schema location.
+	 * Instance constructor. Contains a hard-coded CH XMLGW URL and additional
+	 * schema location.  Adds a channel route identifying the use of this
+	 * extension.
 	 *
 	 * @param string $govTalkSenderId GovTalk sender ID.
 	 * @param string $govTalkPassword GovTalk password.
@@ -45,6 +46,8 @@ class CompaniesHouse extends GovTalk {
 		$this->setSchemaLocation('http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd');
 		$this->setMessageAuthentication('alternative');
 		$this->setMessageQualifier('request');
+		
+		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', '0.1');
 
 	}
 
