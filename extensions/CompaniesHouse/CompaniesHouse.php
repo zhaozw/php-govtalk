@@ -18,11 +18,11 @@
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-require_once('../../../GovTalk.php');
 
 /**
  * Companies House API client.  Extends the functionality provided by the
- * GovTalk class to build and parse Companies House data.
+ * GovTalk class to build and parse Companies House data.  The php-govtalk
+ * base class needs including externally in order to use this extention.
  *
  * @author Jonathon Wardman
  * @copyright 2009, Fubra Limited

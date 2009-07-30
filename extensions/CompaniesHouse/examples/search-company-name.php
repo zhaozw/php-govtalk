@@ -1,6 +1,7 @@
 <?php
 
 	 // Include the Companies House module...
+require_once('../../../GovTalk.php');
 require_once('../CompaniesHouse.php');
 
 	// Include the Companies House configuration
