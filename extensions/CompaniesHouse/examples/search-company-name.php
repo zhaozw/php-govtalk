@@ -1,11 +1,10 @@
 <?php
 
 	 // Include the Companies House module...
-require_once('../../CompaniesHouse.php');
+require_once('../CompaniesHouse.php');
 
-	 // Companies house user ID and password...
-$chUserId = 'XMLGatewayTestUserID';
-$chPassword = 'XMLGatewayTestPassword';
+	// Include the Companies House configuration
+require_once('config.php');
 
 if (isset($_GET['companyname'])) {
 
