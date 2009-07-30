@@ -100,6 +100,12 @@ class GovTalk {
 	 * @var string
 	 */
 	private $_messageCorrelationId = null;
+	/**
+	 * GovTalk message Transformation.  Default is null, return in standard XML.
+	 *
+	 * @var string
+	 */
+	private $_messageTransformation = 'XML';
 	
  /* SenderDetails related variables. */
 	
@@ -133,6 +139,15 @@ class GovTalk {
 	 * @var array
 	 */
 	private $_messageChannelRouting = array();
+	
+ /* Target details related variables. */
+
+	/**
+	 * GovTalk target details / organisations array.
+	 *
+	 * @var array
+	 */
+	private $_messageTargetDetails = array();
 
  /* Full request/response data variables. */
  
@@ -158,11 +173,11 @@ class GovTalk {
  /* System / internal variables. */
 
 	/**
-	 * Transaction ID of the last message sent.
+	 * Transaction ID of the last message sent / received.
 	 *
 	 * @var string
 	 */
-	private $_lastTransactionId = null;
+	private $_transactionId = null;
 
  /* Magic methods. */
 
@@ -208,13 +223,13 @@ class GovTalk {
  /* System / internal get methods. */
 
 	/**
-	 * Returns the transaction ID used in the last message sent.
+	 * Returns the transaction ID used in the last message sent / received.
 	 *
 	 * @return string Transaction ID.
 	 */
-	public function getLastTransactionId() {
+	public function getTransactionId() {
 
-		return $this->_lastTransactionId;
+		return $this->_transactionId;
 
 	}
 
@@ -285,15 +300,47 @@ class GovTalk {
 	}
 	
 	/**
-	 * Returns the contents of the response Body section, removing all GovTalk
-	 * Message Envelope wrappers, as a SimpleXML object.
+	 * Returns the correlation ID issued by the Gateway in the last response, if
+	 * there was one.  Once an ID has been assigned by the Gateway, any
+	 * subsequent communications regarding a message much include it.
 	 *
-	 * @return mixed The message body as a SimpleXML object, or false if this isn't set.
+	 * @return integer The Gateway timestamp as a unix timestamp, or false if this isn't set.
 	 */
-	public function getResponseBody() {
+	public function getResponseCorrelationId() {
+
+		if (isset($this->_fullResponseObject)) {
+			if (isset($this->_fullResponseObject->Header->MessageDetails->CorrelationID)) {
+				return (string) $this->_fullResponseObject->Header->MessageDetails->CorrelationID;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+
+	}
+	
+	/**
+	 * Returns information from the Gateway ResponseEndPoint including recomended
+	 * retry times, if there is one.
+	 *
+	 * @return array The Gateway endpoint and retry interval, or false if this isn't set.
+	 */
+	public function getResponseEndpoint() {
 	
 		if (isset($this->_fullResponseObject)) {
-			return $this->_fullResponseObject->Body;
+			if (isset($this->_fullResponseObject->Header->MessageDetails->ResponseEndPoint)) {
+				if (isset($this->_fullResponseObject->Header->MessageDetails->ResponseEndPoint['PollInterval'])) {
+					$pollInterval = (string) $this->_fullResponseObject->Header->MessageDetails->ResponseEndPoint['PollInterval'];
+				} else {
+					$pollInterval = null;
+				}
+				$endpoint = (string) $this->_fullResponseObject->Header->MessageDetails->ResponseEndPoint;
+				return array('endpoint' => $endpoint,
+				             'interval' => $pollInterval);
+			} else {
+				return false;
+			}
 		} else {
 			return false;
 		}
@@ -328,6 +375,22 @@ class GovTalk {
 			return false;
 		}
 
+	}
+	
+	/**
+	 * Returns the contents of the response Body section, removing all GovTalk
+	 * Message Envelope wrappers, as a SimpleXML object.
+	 *
+	 * @return mixed The message body as a SimpleXML object, or false if this isn't set.
+	 */
+	public function getResponseBody() {
+	
+		if (isset($this->_fullResponseObject)) {
+			return $this->_fullResponseObject->Body;
+		} else {
+			return false;
+		}
+	
 	}
 
  /* General envelope related set methods. */
@@ -436,14 +499,15 @@ class GovTalk {
 	}
 	
 	/**
-	 * Sets the message Function for use in MessageDetails header.
+	 * Sets the message Function for use in MessageDetails header. This function
+	 * is designed to be extended by department-specific extensions to validate
+	 * the possible options for message function, although can be used as-is.
 	 *
 	 * @param string $messageFunction The function to set.
 	 * @return boolean True if the Function is valid and set, false if it's invalid (and therefore not set).
 	 */
 	public function setMessageFunction($messageFunction) {
 	
-	 // TODO: Limit the possible values for Function.
 		$this->_messageFunction = $messageFunction;
 		return true;
 
@@ -454,10 +518,12 @@ class GovTalk {
 	 *
 	 * @param string $messageCorrelationId The correlation ID to set.
 	 * @return boolean True if the CorrelationID is valid and set, false if it's invalid (and therefore not set).
+	 * @see function getResponseCorrelationId
 	 */
 	public function setMessageCorrelationId($messageCorrelationId) {
 
-	 // TODO: Track message correlation ids internally?
+	 // CorrelationIDs need to be set externally (to cope with things like
+	 // database tracked requests), so we can't automate correlation tracking.
 		if (strlen($messageCorrelationId) <= 32) {
 			$this->_messageCorrelationId = $messageCorrelationId;
 			return true;
@@ -465,6 +531,35 @@ class GovTalk {
 			return false;
 		}
 
+	}
+	
+	/**
+	 * Sets the message Transformation for use in MessageDetails header. Possible
+	 * values are 'XML', 'HTML', or 'text'. The default is XML.
+	 *
+	 * Note: setting this to anything other than XML will limit the functionality
+	 * of the GovTalk class and some extensions as they are not currently able to
+	 * parse HTML or text documents. You are advised against changing this value
+	 * from the default.
+	 *
+	 * @param string $messageCorrelationId The correlation ID to set.
+	 * @return boolean True if the CorrelationID is valid and set, false if it's invalid (and therefore not set).
+	 * @see function getResponseCorrelationId
+	 */
+	public function setMessageTransformation($transformation) {
+	
+		switch ($transformation) {
+			case 'XML':
+			case 'HTML':
+			case 'text':
+				$this->_messageTransformation = $transformation;
+				return true;
+			break;
+			default:
+				return false;
+			break;
+		}
+	
 	}
 	
  /* SenderDetails related set methods. */
@@ -526,9 +621,9 @@ class GovTalk {
 	 * Applications using php-govtalk should <i>always</i> add at least one
 	 * additional channel route before sending a message to the Gateway.
 	 *
-	 * Note: php-govtalk will add itself as the last route in the chain.  This
-	 * is to identify the library to the Gateway and to assist in tracking down
-	 * issues caused by the library itself.
+	 * Note: php-govtalk will always add itself as the last route in the chain.
+	 * This is to identify the library to the Gateway and to assist in tracking
+	 * down issues caused by the library itself.
 	 *
 	 * @param string $uri The URI of the owner of the process being added to the route.
 	 * @param string $softwareName The name of the software generating this route entry.
@@ -579,7 +674,7 @@ class GovTalk {
 	 */
 	public function addMessageKey($keyType, $keyValue) {
 	
-		if (is_string($keyType) && is_string($keyValue)) {
+		if (is_string($keyType) && $keyValue != '') {
 			$this->_govTalkKeys[] = array('type' => $keyType,
 			                              'value' => $keyValue);
 			return true;
@@ -590,7 +685,7 @@ class GovTalk {
 	}
 	
 	/**
-	 * Removed a key-value pair from the set of keys to be sent with the message
+	 * Remove a key-value pair from the set of keys to be sent with the message
 	 * as part of the GovTalkDetails element.
 	 *
 	 * Searching is done primarily on key type (type attribute) and all keys with
@@ -629,6 +724,64 @@ class GovTalk {
 	public function resetMessageKeys() {
 	
 		$this->_govTalkKeys = array();
+		return true;
+	
+	}
+	
+ /* Target details related methods. */
+ 
+	/**
+	 * Add an organisation to the TargetDetails section of the GovTalkDetail
+	 * element.
+	 *
+	 * @param string $targetOrganisation The organisation to be added.
+	 * @return boolean True if the key is valid and added, false if it's not valid (and therefore not added).
+	 */
+	public function addTargetOrganisation($targetOrganisation) {
+	
+		if (($targetOrganisation != '') && (strlen($targetOrganisation) < 65)) {
+			$this->_messageTargetDetails[] = $targetOrganisation;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Remove an organisation from TargetDetails section of the GovTalkDetail
+	 * element.
+	 *
+	 * If more than one organisation matches the given organisation name all are
+	 * removed.
+	 *
+	 * @param string $targetOrganisation The organisation to be deleted.
+	 * @return integer The number of organisations deleted.
+	 */
+	public function deleteTargetOrganisation($targetOrganisation) {
+	
+		if (($targetOrganisation != '') && (strlen($targetOrganisation) < 65)) {
+			$deletedCount = 0;
+			foreach ($this->_messageTargetDetails AS $key => $organisation) {
+				if ($organisation == $targetOrganisation) {
+					$deletedCount++;
+					unset($this->_messageTargetDetails[$key]);
+				}
+			}
+			return $deletedCount;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Removes all GovTalkDetails TargetDetails organisations.
+	 *
+	 * @return boolean Always returns true.
+	 */
+	public function resetTargetOrganisations() {
+	
+		$this->_messageTargetDetails = array();
 		return true;
 	
 	}
@@ -672,7 +825,9 @@ class GovTalk {
 
 			if ($gatewayResponse !== false) {
 				$this->_fullResponseString = $gatewayResponse;
-				$this->_fullResponseObject = simplexml_load_string($gatewayResponse);
+				if ($this->_messageTransformation == 'XML') {
+					$this->_fullResponseObject = simplexml_load_string($gatewayResponse);
+				}
 				return true;
 			} else {
 				return false;
@@ -716,7 +871,7 @@ class GovTalk {
 			if (isset($this->_govTalkSenderId) && isset($this->_govTalkPassword)) {
 				if (isset($this->_messageAuthType)) {
 	 // Generate the transaction ID...
-				$transactionId = $this->_generateTransactionId();
+					$this->_generateTransactionId();
 					if (isset($this->_messageBody)) {
 	 // Create the XML document (in memory)...
 						$package = new XMLWriter();
@@ -743,9 +898,12 @@ class GovTalk {
 									if ($this->_messageFunction !== null) {
 										$package->writeElement('Function', $this->_messageFunction);
 									}
-									$package->writeElement('TransactionID', $transactionId);
+									$package->writeElement('TransactionID', $this->_transactionId);
 									if ($this->_messageCorrelationId !== null) {
 										$package->writeElement('CorrelationID', $this->_messageCorrelationId);
+									}
+									if ($this->_messageTransformation !== 'XML') {
+										$package->writeElement('Transformation', $this->_messageTransformation);
 									}
 									$package->writeElement('GatewayTest', $this->_govTalkTest);
 								$package->endElement(); # MessageDetails
@@ -759,7 +917,7 @@ class GovTalk {
 										$package->startElement('Authentication');
 										switch ($this->_messageAuthType) {
 											case 'alternative':
-												if ($authenticationArray = $this->generateAlternativeAuthentication($transactionId)) {
+												if ($authenticationArray = $this->generateAlternativeAuthentication($this->_transactionId)) {
 													$package->writeElement('Method', $authenticationArray['method']);
 													$package->writeElement('Value', $authenticationArray['token']);
 												} else {
@@ -794,6 +952,15 @@ class GovTalk {
 										$package->endElement(); # Key
 									}
 									$package->endElement(); # Keys
+								}
+								
+	 // Target details...
+								if (count($this->_messageTargetDetails) > 0) {
+									$package->startElement('TargetDetails');
+									foreach ($this->_messageTargetDetails AS $targetOrganisation) {
+										$package->writeElement('Organisation', $targetOrganisation);
+									}
+									$package->endElement(); # TargetDetails
 								}
 							
 	 // Channel routing...
@@ -864,11 +1031,12 @@ class GovTalk {
 	 * IDs. Therefore this implementation generates only a numeric transaction
 	 * ID.
 	 *
-	 * @return string A numeric transaction ID valid for use in TransactionID.
+	 * @return boolean Always returns true.
 	 */
 	private function _generateTransactionId() {
 
-		return str_replace('.', '', microtime(true));
+		$this->_transactionId = str_replace('.', '', microtime(true));
+		return true;
 
 	}
 

@@ -18,8 +18,7 @@
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-
-require_once('../../GovTalk.php');
+require_once('../../../GovTalk.php');
 
 /**
  * Companies House API client.  Extends the functionality provided by the
@@ -34,8 +33,9 @@ class CompaniesHouse extends GovTalk {
  /* Magic methods. */
 
 	/**
-	 * Instance constructor.  Contains a hard-coded CH XMLGW URL and additional
-	 * schema location.
+	 * Instance constructor. Contains a hard-coded CH XMLGW URL and additional
+	 * schema location.  Adds a channel route identifying the use of this
+	 * extension.
 	 *
 	 * @param string $govTalkSenderId GovTalk sender ID.
 	 * @param string $govTalkPassword GovTalk password.
@@ -45,6 +45,9 @@ class CompaniesHouse extends GovTalk {
 		parent::__construct('http://xmlgw.companieshouse.gov.uk/v1-0/xmlgw/Gateway', $govTalkSenderId, $govTalkPassword);
 		$this->setSchemaLocation('http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd');
 		$this->setMessageAuthentication('alternative');
+		$this->setMessageQualifier('request');
+		
+		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', '0.1');
 
 	}
 
@@ -68,7 +71,6 @@ class CompaniesHouse extends GovTalk {
 			   case 'LIVE': case 'DISSOLVED': case 'FORMER': case 'PROPOSED':
 			   
 					$this->setMessageClass('NameSearch');
-					$this->setMessageQualifier('request');
 
 					$package = new XMLWriter();
 					$package->openMemory();
@@ -113,7 +115,6 @@ class CompaniesHouse extends GovTalk {
 			   case 'LIVE': case 'DISSOLVED': case 'FORMER': case 'PROPOSED':
 
 					$this->setMessageClass('NumberSearch');
-					$this->setMessageQualifier('request');
 
 					$package = new XMLWriter();
 					$package->openMemory();
@@ -166,7 +167,6 @@ class CompaniesHouse extends GovTalk {
 				case 'DIS': case 'LLP': case 'CUR': case 'EUR':
 				
 					$this->setMessageClass('OfficerSearch');
-					$this->setMessageQualifier('request');
 					
 					$package = new XMLWriter();
 					$package->openMemory();
@@ -242,7 +242,6 @@ class CompaniesHouse extends GovTalk {
 		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
 
 			$this->setMessageClass('CompanyDetails');
-			$this->setMessageQualifier('request');
 			
 			$package = new XMLWriter();
 			$package->openMemory();
@@ -347,7 +346,7 @@ class CompaniesHouse extends GovTalk {
 	 * DetailsRequest and returns the results.
 	 *
 	 * @param string $personId The ID of the person about whom to return details.
-	 * @param string $reference The user reference which will be quoted in the billing breakdown.
+	 * @param string $reference A user reference which will be quoted in the billing breakdown.
 	 * @return mixed An array of data about the officer, or false on failure.
 	 */
 	public function officerDetails($personId, $reference) {
@@ -355,7 +354,6 @@ class CompaniesHouse extends GovTalk {
 		if (($personId != '') && (($reference != '') && (strlen($reference) < 25))) {
 		
 			$this->setMessageClass('OfficerDetails');
-			$this->setMessageQualifier('request');
 			
 			$package = new XMLWriter();
 			$package->openMemory();
@@ -446,12 +444,11 @@ class CompaniesHouse extends GovTalk {
 	 * @param boolean $capitalDocs Flag indicating if capital documents should be returned (if available).
 	 * @return mixed An array containing the filing history inclduing document keys, or false on failure.
 	 */
-	public function companyFilingHistory($companyNumber, $capitalDocs = false) {
+	public function filingHistory($companyNumber, $capitalDocs = false) {
 
 		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber)) {
 
 			$this->setMessageClass('FilingHistory');
-			$this->setMessageQualifier('request');
 
 			$package = new XMLWriter();
 			$package->openMemory();
@@ -497,6 +494,90 @@ class CompaniesHouse extends GovTalk {
 			return false;
 		}
 
+	}
+	
+	/**
+	 * Gets information about a specific document returned by the filing history
+	 * call. Processes a DocumentInfoRequest call and returns the results.
+	 *
+	 * @param string $companyNumber The number of the company for which to return the document information.
+	 * @param boolean $companyName The name of the company for which to return the document information.
+	 * @param boolean $imageKey The key returned from a filing history request of the document in question.
+	 * @return mixed An array containing information on the document in question, or false on failure.
+	 */
+	public function documentInfo($companyNumber, $companyName, $imageKey) {
+	
+		if (preg_match('/[A-Z0-9]{8,8}/', $companyNumber) && (($companyName != '') && (strlen($companyName) < 161))) {
+		
+			$this->setMessageClass('DocumentInfo');
+			
+			$package = new XMLWriter();
+			$package->openMemory();
+			$package->setIndent(true);
+			$package->startElement('DocumentInfoRequest');
+				$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/CompanyDocument.xsd');
+				$package->writeElement('CompanyNumber', $companyNumber);
+				$package->writeElement('CompanyName', $companyName);
+				$package->writeElement('ImageKey', $imageKey);
+			$package->endElement();
+			
+			$this->setMessageBody($package);
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+			
+				$documentInfoBody = $this->getResponseBody()->DocumentInfo;
+				$documentInfo = array('type' => (string) $documentInfoBody->FormType,
+				                      'pages' => (string) $documentInfoBody->NumPages,
+				                      'status' => (string) $documentInfoBody->Media,
+				                      'key' => (string) $documentInfoBody->DocRequestKey);
+				if (isset($documentInfoBody->MadeUpDate)) {
+					$documentInfo['date'] = strtotime((string) $documentInfoBody->MadeUpDate);
+				}
+				return $documentInfo;
+				
+			} else {
+				return false;
+			}
+			
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Requests a document from the document ordering system. As documents may
+	 * take time to prepare this function returns the FTP location used to fetch
+	 * the document image, as well as a poll interval (in seconds) which should
+	 * be used to re-poll the server until the document is ready.
+	 *
+	 * @param string $documentKey The key provided by a document info request identifying the document in question.
+	 * @param string $reference A user reference which will be quoted in the billing breakdown.
+	 * @return mixed An array of the document endpoint and retry interval, or false on failure.
+	 */
+	public function documentRequest($documentKey, $reference) {
+	
+		if (($documentKey != '') && (($reference != '') && (strlen($reference) < 25))) {
+		
+			$this->setMessageClass('Document');
+			
+			$package = new XMLWriter();
+			$package->openMemory();
+			$package->setIndent(true);
+			$package->startElement('DocumentRequest');
+				$package->writeAttribute('xsi:noNamespaceSchemaLocation', 'http://xmlgw.companieshouse.gov.uk/v1-0/schema/CompanyDocument.xsd');
+				$package->writeElement('DocRequestKey', $documentKey);
+				$package->writeElement('UserReference', $reference);
+			$package->endElement();
+			
+			$this->setMessageBody($package);
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+				return $this->getResponseEndpoint();
+			}
+			
+		} else {
+			return false;
+		}
+	
 	}
 
  /* Protected methods. */
