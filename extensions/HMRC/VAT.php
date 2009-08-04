@@ -21,7 +21,8 @@
 
 /**
  * HMRC VAT API client.  Extends the functionality provided by the
- * GovTalk class to build and parse HMRC VAT submissions.  The php-govtalk
+ * GovTalk class to build and parse HMRC VAT submissions.  This class only
+ * supports V2 of the HMRC VAT internet filing system.  The php-govtalk
  * base class needs including externally in order to use this extention.
  *
  * @author Jonathon Wardman
@@ -50,20 +51,32 @@ class HmrcVat extends GovTalk {
 			parent::__construct('https://secure.gateway.gov.uk/submission', $govTalkSenderId, $govTalkPassword);
 		}
 
+		$this->setMessageAuthentication('clear');
 		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC VAT extension', '0.1');
 
 	}
 
  /* Public methods. */
  
-	public function declarationRequest($vatNumber, $returnPeriod, $vatOutput, $vatECAcq, $vatReclaimedInput, $netOutput, $netInput, $netECSupply, $netECAcq, $totalVat = null, $netVat = null) {
+ /* Private methods. */
+ 
+	/**
+	 * Generates an IRmark hash from the given XML string for use in the IRmark
+	 * node inside the message body.  The string passed must contain one IRmark
+	 * element containing the string IRmark (ie. <IRmark>IRmark</IRmark>) or the
+	 * function will fail.
+	 *
+	 * @param $xmlString string The XML to generate the IRmark hash from.
+	 * @return string The IRmark hash.
+	 */
+	private function _generateIRMark($xmlString) {
 	
-		$vatNumber = trim(str_replace(' ', '', $vatNumber));
-		if (preg_match('/^(GB)?(\d{9,12})$/', $vatNumber, $vatNumberChunks)) { # VAT number
-			if (preg_match('/^\d{4}-\d{2}$/', $returnPeriod)) { # VAT period
-				$this->addMessageKey('VATRegNo', $vatNumberChunks[2]);
-				$this->setMessageQualifier('request');
-				$this->setMessageClass('HMCE-VATDEC-ORG-VAT100-STD');
+		if (is_string($xmlString)) {
+			$xmlString = str_replace('<IRmark>IRmark</IRmark>', '', $xmlString, $matchCount);
+			if ($matchCount == 1) {
+				$xmlDom = new DOMDocument;
+				$xmlDom->loadXML($xmlString);
+				return sha1($xmlDom->documentElement->C14N(), true);
 			} else {
 				return false;
 			}
