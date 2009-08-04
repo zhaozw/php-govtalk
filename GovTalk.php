@@ -822,8 +822,9 @@ class GovTalk {
 	 * @return boolean True if the message was successfully submitted to the Gateway and a response was received, false if not.
 	 */
 	public function sendMessage() {
-
+	
 		if ($this->_fullRequestString = $this->_packageGovTalkEnvelope()) {
+		
 		   if (function_exists('curl_init')) {
 				$curlHandle = curl_init($this->_govTalkServer);
 				curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
@@ -842,17 +843,21 @@ class GovTalk {
 					return false;
 				}
 			}
-
+			
 			if ($gatewayResponse !== false) {
 				$this->_fullResponseString = $gatewayResponse;
 				$validXMLResponse = false;
 				if ($this->_messageTransformation == 'XML') {
 					if (isset($this->_additionalXsiSchemaLocation)) {
-						$validate = new DOMDocument();
-						$validate->loadXML($this->_fullResponseString);
-						if ($validate->schemaValidate($this->_additionalXsiSchemaLocation)) {
-							$validXMLResponse = true;
+						if (file_exists($this->_additionalXsiSchemaLocation)) {
+							$validate = new DOMDocument();
+							$validate->loadXML($this->_fullResponseString);
+							if ($validate->schemaValidate($this->_additionalXsiSchemaLocation)) {
+								$validXMLResponse = true;
+							}
 						}
+					} else {
+						$validXMLResponse = true;
 					}
 				}
 				if ($validXMLResponse === true) {
@@ -977,7 +982,7 @@ class GovTalk {
 									$package->startElement('Keys');
 									foreach ($this->_govTalkKeys AS $keyPair) {
 										$package->startElement('Key');
-											$package->writeAttribute('type', $keyPair['type']);
+											$package->writeAttribute('Type', $keyPair['type']);
 											$package->text($keyPair['value']);
 										$package->endElement(); # Key
 									}
