@@ -843,7 +843,7 @@ class GovTalk {
 					return false;
 				}
 			}
-			
+			echo $gatewayResponse;
 			if ($gatewayResponse !== false) {
 				$this->_fullResponseString = $gatewayResponse;
 				$validXMLResponse = false;
@@ -1019,7 +1019,7 @@ class GovTalk {
 											foreach ($channelRoute['id'] AS $channelRouteId) {
 												$package->startElement('ID');
 													$package->writeAttribute('type', $channelRouteId['type']);
-													$package->writeText($channelRouteId['value']);
+													$package->text($channelRouteId['value']);
 												$package->endElement(); # ID
 											}
 										}
@@ -1043,7 +1043,7 @@ class GovTalk {
 	 // Flush the buffer, validate the schema and return the XML...
 						$xmlPackage = $package->flush();
 						$validXMLRequest = true;
-                  if (isset($this->_additionalXsiSchemaLocation)) {
+						if (isset($this->_additionalXsiSchemaLocation)) {
 							$validation = new DOMDocument();
 							$validation->loadXML($xmlPackage);
 							if (!$validation->schemaValidate($this->_additionalXsiSchemaLocation)) {
