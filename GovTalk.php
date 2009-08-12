@@ -590,7 +590,7 @@ class GovTalk {
 
 	 // CorrelationIDs need to be set externally (to cope with things like
 	 // database tracked requests), so we can't automate correlation tracking.
-		if (strlen($messageCorrelationId) <= 32) {
+		if (preg_match('/[0-9A-F]{0,32}/', $messageCorrelationId)) {
 			$this->_messageCorrelationId = $messageCorrelationId;
 			return true;
 		} else {
