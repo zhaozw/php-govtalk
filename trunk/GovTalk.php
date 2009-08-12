@@ -191,13 +191,13 @@ class GovTalk {
 	/**
 	 * Instance constructor.
 	 *
-	 * @param string $govTalkServer GovTalk server.
+	 * @param string $govTalkServer GovTalk server URL.
 	 * @param string $govTalkSenderId GovTalk sender ID.
 	 * @param string $govTalkPassword GovTalk password.
 	 */
 	public function __construct($govTalkServer, $govTalkSenderId, $govTalkPassword) {
 
-		$this->_govTalkServer = $govTalkServer;
+		$this->setGovTalkServer($govTalkServer);
 		$this->_govTalkSenderId = $govTalkSenderId;
 		$this->_govTalkPassword = $govTalkPassword;
 
@@ -401,6 +401,19 @@ class GovTalk {
 	}
 
  /* General envelope related set methods. */
+ 
+	/**
+	 * Change the URL used to talk to the Government Gateway from that set during
+	 * the instance instantiation. Very handy when required to poll a different
+	 * URL for the result of a submission request.
+	 *
+	 * @param string $govTalkServer GovTalk server URL.
+	 */
+	public function setGovTalkServer($govTalkServer) {
+	
+		$this->_govTalkServer = $govTalkServer;
+	
+	}
 
 	/**
 	 * An additional SchemaLocation for use in the GovTalk headers.  This URL
