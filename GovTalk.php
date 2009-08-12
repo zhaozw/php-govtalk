@@ -178,6 +178,13 @@ class GovTalk {
 	 * @var string
 	 */
 	private $_transactionId = null;
+	/**
+	 * Flag indicating if the outgoing and incoming XML should be validated
+	 * against the XML schema. By default these checks will be made.
+	 *
+	 * @var boolean
+	 */
+	private $_schemaValidation = true;
 
  /* Magic methods. */
 
@@ -398,18 +405,44 @@ class GovTalk {
 	/**
 	 * An additional SchemaLocation for use in the GovTalk headers.  This URL
 	 * should be the location of an additional xsd defining the body segment.
+	 * By default if an additional schema is set then both incoming and outgoing
+	 * XML data will be validated against it.  This can be disabled by passing
+	 * false as the second argument when setting the schema.
 	 *
 	 * @param string $schemaLocation URL location of additional xsd.
+	 * @param boolean $validate True to turn validation on, false to turn it off.
 	 * @return boolean True if the URL is valid and set, false if it's invalid (and therefore not set).
 	 */
-	public function setSchemaLocation($schemaLocation) {
+	public function setSchemaLocation($schemaLocation, $validate = null) {
 
 		if (preg_match('/^https?:\/\/[\w-.]+\.gov\.uk/', $schemaLocation)) {
 			$this->_additionalXsiSchemaLocation = $schemaLocation;
+			if ($validate !== null) {
+				$this->setSchemaValidation($validate);
+			}
+			return true;
 		} else {
 			return false;
 		}
 
+	}
+	
+	/**
+	 * Switch off (or on) schema validation of outgoing and incoming XML data
+	 * against the additional XML schema.
+	 *
+	 * @param boolean $validationFlag True to turn validation on, false to turn it off.
+	 * @return boolean True if the validation is set, false if setting the validation failed.
+	 */
+	public function setSchemaValidation($validate) {
+	
+		if (is_bool($validate)) {
+			$this->_schemaValidation = $validate;
+			return true;
+		} else {
+			return false;
+		}
+	
 	}
 
 	/**
@@ -843,12 +876,12 @@ class GovTalk {
 					return false;
 				}
 			}
-			echo $gatewayResponse;
+			
 			if ($gatewayResponse !== false) {
 				$this->_fullResponseString = $gatewayResponse;
 				$validXMLResponse = false;
 				if ($this->_messageTransformation == 'XML') {
-					if (isset($this->_additionalXsiSchemaLocation)) {
+					if (isset($this->_additionalXsiSchemaLocation) && ($this->_schemaValidation == true)) {
 						if (file_exists($this->_additionalXsiSchemaLocation)) {
 							$validate = new DOMDocument();
 							$validate->loadXML($this->_fullResponseString);
@@ -1043,7 +1076,7 @@ class GovTalk {
 	 // Flush the buffer, validate the schema and return the XML...
 						$xmlPackage = $package->flush();
 						$validXMLRequest = true;
-						if (isset($this->_additionalXsiSchemaLocation)) {
+						if (isset($this->_additionalXsiSchemaLocation) && ($this->_schemaValidation == true)) {
 							$validation = new DOMDocument();
 							$validation->loadXML($xmlPackage);
 							if (!$validation->schemaValidate($this->_additionalXsiSchemaLocation)) {
@@ -1055,6 +1088,7 @@ class GovTalk {
 						} else {
 							return false;
 						}
+						
 					} else {
 						return false;
 					}
