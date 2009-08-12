@@ -588,8 +588,6 @@ class GovTalk {
 	 */
 	public function setMessageCorrelationId($messageCorrelationId) {
 
-	 // CorrelationIDs need to be set externally (to cope with things like
-	 // database tracked requests), so we can't automate correlation tracking.
 		if (preg_match('/[0-9A-F]{0,32}/', $messageCorrelationId)) {
 			$this->_messageCorrelationId = $messageCorrelationId;
 			return true;
@@ -851,6 +849,49 @@ class GovTalk {
 		return true;
 
 	}
+	
+ /* Specific generic Gateway requests. */
+
+	/**
+	 * Sends a generic delete request. By default the request refers to the last
+	 * stored correlation ID and class, but this behaviour can be over-ridden by
+	 * providing both correlation ID and class to the method.
+	 *
+	 * @param string $govTalkServer The GovTalk server to send the delete request to. May be skipped with a null value.
+	 * @param string $correlationId The correlation ID to be deleted.
+	 * @param string $messageClass The class used when the request which generated the correlation ID was sent to the gateway.
+	 * @return boolean True if message was successfully deleted from the gateway, false otherwise.
+	 */
+	public function sendDeleteRequest($correlationId = null, $messageClass = null) {
+	
+		if (($correlationId !== null) && ($messageClass !== null)) {
+			if (preg_match('/[0-9A-F]{0,32}/', $correlationId)) {
+				$correlationId = $correlationId;
+				$messageClass = $messageClass;
+			} else {
+				return false;
+			}
+		} else {
+			if ($correlationId = $this->getResponseCorrelationId()) {
+				$messageClass = $this->_messageClass;
+			} else {
+				return false;
+			}
+		}
+		
+		$this->setMessageClass($messageClass);
+		$this->setMessageQualifier('request');
+		$this->setMessageFunction('delete');
+		$this->setMessageCorrelationId($correlationId);
+		$this->setMessageBody('');
+		
+		if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+			return true;
+		} else {
+			return false;
+		}
+	
+	}
 
  /* Message sending related methods. */
 
@@ -870,7 +911,7 @@ class GovTalk {
 	public function sendMessage() {
 	
 		if ($this->_fullRequestString = $this->_packageGovTalkEnvelope()) {
-		
+			$this->_fullResponseString = $this->_fullResponseObject = null;
 		   if (function_exists('curl_init')) {
 				$curlHandle = curl_init($this->_govTalkServer);
 				curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
