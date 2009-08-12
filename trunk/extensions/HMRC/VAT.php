@@ -41,6 +41,15 @@ class HmrcVat extends GovTalk {
 	 * @var string
 	 */
 	private $_vatRegNumber;
+	
+ /* System / internal variables. */
+
+	/**
+	 * Flag indicating if the IRmark should be generated for outgoing XML.
+	 *
+	 * @var boolean
+	 */
+	private $_generateIRmark = false;
 
  /* Magic methods. */
 
@@ -69,7 +78,7 @@ class HmrcVat extends GovTalk {
 			break;
 		}
 		
-		$this->setSchemaLocation('http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/2/VATDeclarationRequest-v2-1.xsd');
+		$this->setSchemaLocation('http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/2/VATDeclarationRequest-v2-1.xsd', false);
 
 		$this->setMessageAuthentication('clear');
 		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC VAT extension', '0.1');
@@ -96,10 +105,28 @@ class HmrcVat extends GovTalk {
 	}
 	
 	/**
+	 * Turns the IRmark generator on or off (by default the IRmark generator is
+	 * turned off). When it's switched off no IRmark element will be sent with
+	 * requests to HMRC.
+	 *
+	 * @param boolean $flag True to turn on IRmark generator, false to turn it off.
+	 */
+	public function setIRmarkGeneration($flag) {
+	
+		if (is_bool($flag)) {
+			$this->_generateIRmark = $flag;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
 	 * Submits a VAT declaration request.
 	 *
 	 * This method supports final returns using the final argument.
 	 *
+	 * @param string $vatNumber The VAT number of the company this return is for.
 	 * @param string $returnPeriod The period ID this return is for (in the format YYYY-MM).
 	 * @param string $senderCapacity The capacity this return is being submitted under (Agent, Trust, Company, etc.).
 	 * @param float $vatOutput VAT due on outputs (box 1).
@@ -112,76 +139,174 @@ class HmrcVat extends GovTalk {
 	 * @param float $totalVat Total VAT (box 3). If this value is not specified then it will be calculated as box 1 + box 2. May be skipped by passing null.
 	 * @param float $netVat Net VAT (box 5). If this value is not specified then it will be calculated as the absolute difference between box 5 and box 4. May be skipped by passing null.
 	 * @param boolean $finalReturn Flag indicating if this return is a final VAT return.
+	 * @return mixed An array of 'endpoint', 'interval' and 'correlationid' on success, or false on failure.
 	 */
-	public function declarationRequest($returnPeriod, $senderCapacity, $vatOutput, $vatECAcq, $vatReclaimedInput, $netOutput, $netInput, $netECSupply, $netECAcq, $totalVat = null, $netVat = null, $finalReturn = false) {
+	public function declarationRequest($vatNumber, $returnPeriod, $senderCapacity, $vatOutput, $vatECAcq, $vatReclaimedInput, $netOutput, $netInput, $netECSupply, $netECAcq, $totalVat = null, $netVat = null, $finalReturn = false) {
 	
-		if (preg_match('/^\d{4}-\d{2}$/', $returnPeriod)) { # VAT period
-			$validCapacities = array('Individual', 'Company', 'Agent',
-			                         'Bureau', 'Partnership', 'Trust',
-			                         'Employer', 'Government', 'Acting in Capacity',
-			                         'Other');
-			if (in_array($senderCapacity, $validCapacities)) {
-				if (is_numeric($vatOutput) && is_numeric($vatECAcq) && is_numeric($vatReclaimedInput) && is_numeric($netOutput) && is_numeric($netInput) && is_numeric($netECSupply) && is_numeric($netECAcq)) {
+		$vatNumber = trim(str_replace(' ', '', $vatNumber));
+		if (preg_match('/^(GB)?(\d{9,12})$/', $vatNumber)) { # VAT number
+			$this->setVatNumber($vatNumber);
+			if (preg_match('/^\d{4}-\d{2}$/', $returnPeriod)) { # VAT period
+				$validCapacities = array('Individual', 'Company', 'Agent',
+				                         'Bureau', 'Partnership', 'Trust',
+				                         'Employer', 'Government', 'Acting in Capacity',
+				                         'Other');
+				if (in_array($senderCapacity, $validCapacities)) {
+					if (is_numeric($vatOutput) && is_numeric($vatECAcq) && is_numeric($vatReclaimedInput) && is_numeric($netOutput) && is_numeric($netInput) && is_numeric($netECSupply) && is_numeric($netECAcq)) {
+				
+	 // Set the message envelope bits and pieces for this request...
+						$this->setMessageClass('HMRC-VAT-DEC');
+						$this->setMessageQualifier('request');
+						$this->setMessageFunction('submit');
 				
 	 // Build message body...
-					$package = new XMLWriter();
-					$package->openMemory();
-					$package->setIndent(true);
-					$package->startElement('IRenvelope');
-						$package->writeAttribute('xmlns', 'http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/2');
-						$package->startElement('IRheader');
-							$package->startElement('Keys');
-								$package->startElement('Key');
-									$package->writeAttribute('Type', 'VATRegNo');
-									$package->text($this->_vatRegNumber);
-								$package->endElement(); # Key
-							$package->endElement(); # Keys
-							$package->writeElement('PeriodID', $returnPeriod);
-							$package->writeElement('DefaultCurrency', 'GBP');
-//							$package->startElement('IRmark');
-//								$package->writeAttribute('Type', 'generic');
-//								$package->text('IRmark+Token');
-//							$package->endElement(); # IRmark
-							$package->writeElement('Sender', $senderCapacity);
-						$package->endElement(); # IRheader
-						$package->startElement('VATDeclarationRequest');
-							if ($finalReturn === true) {
-								$package->writeAttribute('finalReturn', 'yes');
-							}
-							$package->writeElement('VATDueOnOutputs', sprintf('%.2f', $vatOutput));
-							$package->writeElement('VATDueOnECAcquisitions', sprintf('%.2f', $vatECAcq));
-							if ($totalVat === null) {
-								$totalVat = $vatOutput + $vatECAcq;
-							}
-							$package->writeElement('TotalVAT', sprintf('%.2f', $totalVat));
-							$package->writeElement('VATReclaimedOnInputs', sprintf('%.2f', $vatReclaimedInput));
-							if ($netVat === null) {
-								$netVat = abs($totalVat - $vatReclaimedInput);
-							}
-							if ($netVat < 0) {
-							   return false;
-							}
-							$package->writeElement('NetVAT', sprintf('%.2f', $netVat));
-							$package->writeElement('NetSalesAndOutputs', floor($netOutput));
-							$package->writeElement('NetPurchasesAndInputs', floor($netInput));
-							$package->writeElement('NetECSupplies', floor($netECSupply));
-							$package->writeElement('NetECAcquisitions', floor($netECAcq));
-						$package->endElement(); # VATDeclarationRequest
-					$package->endElement(); # IRenvelope
+						$package = new XMLWriter();
+						$package->openMemory();
+						$package->setIndent(true);
+						$package->startElement('IRenvelope');
+							$package->writeAttribute('xmlns', 'http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/2');
+							$package->startElement('IRheader');
+								$package->startElement('Keys');
+									$package->startElement('Key');
+										$package->writeAttribute('Type', 'VATRegNo');
+										$package->text($this->_vatRegNumber);
+									$package->endElement(); # Key
+								$package->endElement(); # Keys
+								$package->writeElement('PeriodID', $returnPeriod);
+								$package->writeElement('DefaultCurrency', 'GBP');
+								if ($this->_generateIRmark === true) {
+									$package->startElement('IRmark');
+										$package->writeAttribute('Type', 'generic');
+										$package->text('IRmark+Token');
+									$package->endElement(); # IRmark
+								}
+								$package->writeElement('Sender', $senderCapacity);
+							$package->endElement(); # IRheader
+							$package->startElement('VATDeclarationRequest');
+								if ($finalReturn === true) {
+									$package->writeAttribute('finalReturn', 'yes');
+								}
+								$package->writeElement('VATDueOnOutputs', sprintf('%.2f', $vatOutput));
+								$package->writeElement('VATDueOnECAcquisitions', sprintf('%.2f', $vatECAcq));
+								if ($totalVat === null) {
+									$totalVat = $vatOutput + $vatECAcq;
+								}
+								$package->writeElement('TotalVAT', sprintf('%.2f', $totalVat));
+								$package->writeElement('VATReclaimedOnInputs', sprintf('%.2f', $vatReclaimedInput));
+								if ($netVat === null) {
+									$netVat = abs($totalVat - $vatReclaimedInput);
+								}
+								if ($netVat < 0) {
+								   return false;
+								}
+								$package->writeElement('NetVAT', sprintf('%.2f', $netVat));
+								$package->writeElement('NetSalesAndOutputs', floor($netOutput));
+								$package->writeElement('NetPurchasesAndInputs', floor($netInput));
+								$package->writeElement('NetECSupplies', floor($netECSupply));
+								$package->writeElement('NetECAcquisitions', floor($netECAcq));
+							$package->endElement(); # VATDeclarationRequest
+						$package->endElement(); # IRenvelope
 
 	 // Generate IRmark and add it to the body...
-					$bodyText = $package->outputMemory();
-//					$irMark = base64_encode($this->_generateIRMark($bodyText));
-//					$bodyText = str_replace('IRmark+Token', $irMark, $bodyText);
+						$bodyText = $package->outputMemory();
+						if ($this->_generateIRmark === true) {
+							$irMark = base64_encode($this->_generateIRMark($bodyText));
+							$bodyText = str_replace('IRmark+Token', $irMark, $bodyText);
+						}
 
-					$this->setMessageBody($bodyText);
-					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
-var_dump($this->getResponseBody());
+	 // Send the message and deal with the response...
+						$this->setMessageBody($bodyText);
+						if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+							$returnable = $this->getResponseEndpoint();
+							$returnable['correlationid'] = $this->getResponseCorrelationId();
+							return $returnable;
+						} else {
+							return false;
+						}
+
 					} else {
-var_dump($this->getResponseErrors());
 						return false;
 					}
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
+		
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Polls the Gateway for a submission response / error following a VAT
+	 * declaration request. By default the correlation ID from the last response
+	 * is used for the polling, but this can be over-ridden by supplying a
+	 * correlation ID. The correlation ID can be skipped by passing a null value.
+	 *
+	 * If the resource is still pending this method will return the same array
+	 * as declarationRequest() -- 'endpoint', 'interval' and 'correlationid' --
+	 * if not then it'll return something more useful (and as yet undocumented).
+	 *
+	 * @param string $correlationId The correlation ID of the resource to poll. Can be skipped with a null value.
+	 * @param string $pollUrl The URL of the Gateway to poll.
+	 * @return mixed
+	 */
+	public function declarationResponsePoll($correlationId = null, $pollUrl = null) {
+	
+		if ($correlationId === null) {
+			$correlationId = $this->getResponseCorrelationId();
+		}
+
+		if ($this->setMessageCorrelationId($correlationId)) {
+			if ($pollUrl !== null) {
+				$this->setGovTalkServer($pollUrl);
+			}
+			$this->setMessageClass('HMRC-VAT-DEC');
+			$this->setMessageQualifier('poll');
+			$this->setMessageFunction('submit');
+			$this->resetMessageKeys();
+			$this->setMessageBody('');
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+//var_dump($this->_fullResponseObject);
+				$messageQualifier = (string) $this->_fullResponseObject->Header->MessageDetails->Qualifier;
+				if ($messageQualifier == 'response') {
+				
+					$successResponse = $this->_fullResponseObject->Body->SuccessResponse;
+				
+					$responseMessage = array();
+					foreach ($successResponse->Message AS $message) {
+						$responseMessage[] = (string) $message;
+					}
+					$responseAcceptedTime = strtotime($successResponse->AcceptedTime);
 					
+					$declarationPeriodId = (string) $successResponse->ResponseData->VATDeclarationResponse->Header->PeriodId;
+					$declarationPeriodStart = strtotime($successResponse->ResponseData->VATDeclarationResponse->Header->PeriodStartDate);
+					$declarationPeriodEnd = strtotime($successResponse->ResponseData->VATDeclarationResponse->Header->PeriodEndDate);
+					
+               $paymentDueDate = strtotime($successResponse->ResponseData->VATDeclarationResponse->Body->PaymentDueDate);
+               $receiptTimestamp = strtotime($successResponse->ResponseData->VATDeclarationResponse->Body->ReceiptTimestamp);
+               
+               $paymentNarrative = (string) $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification->Narrative;
+               $paymentNetVat = (string) $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification->NetVAT;
+               
+               $paymentNotifcation = $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification;
+               if (isset($paymentNotifcation->NilPaymentIndicator)) {
+               
+               } else if (isset($paymentNotifcation->RepaymentIndicator)) {
+               
+               } else if (isset($paymentNotifcation->DirectDebitPaymentStatus)) {
+               
+               } else if (isset($paymentNotifcation->PaymentRequest)) {
+               
+               }
+               
+				} else if ($messageQualifier == 'acknowledgement') {
+					$returnable = $this->getResponseEndpoint();
+					$returnable['correlationid'] = $this->getResponseCorrelationId();
+					return $returnable;
 				} else {
 					return false;
 				}
@@ -191,6 +316,10 @@ var_dump($this->getResponseErrors());
 		} else {
 			return false;
 		}
+	
+	}
+	
+	public function deleteRequest() {
 	
 	}
 
