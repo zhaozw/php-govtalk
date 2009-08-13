@@ -130,7 +130,7 @@ class HmrcVat extends GovTalk {
 	 * @param string $returnPeriod The period ID this return is for (in the format YYYY-MM).
 	 * @param string $senderCapacity The capacity this return is being submitted under (Agent, Trust, Company, etc.).
 	 * @param float $vatOutput VAT due on outputs (box 1).
-	 * @param float $vatECAcq VAT due on EC acquisitions (box 2)..
+	 * @param float $vatECAcq VAT due on EC acquisitions (box 2).
 	 * @param float $vatReclaimedInput VAT reclaimed on inputs (box 4).
 	 * @param float $netOutput Net sales and outputs (box 6).
 	 * @param float $newInput Net purchases and inputs (box 7).
