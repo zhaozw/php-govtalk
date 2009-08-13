@@ -1,0 +1,7 @@
+<?php
+
+	 // HMRC user ID and password...
+$hmrcUserId = 'XMLGatewayTestUserID';
+$hmrcPassword = 'XMLGatewayTestPassword';
+
+?>
