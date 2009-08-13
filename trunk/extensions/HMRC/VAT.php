@@ -60,7 +60,7 @@ class HmrcVat extends GovTalk {
 	 *
 	 * @param string $govTalkSenderId GovTalk sender ID.
 	 * @param string $govTalkPassword GovTalk password.
-	 * @param string $vsips The service to use ('tpvs', 'vsips', or 'live').
+	 * @param string $service The service to use ('tpvs', 'vsips', or 'live').
 	 */
 	public function __construct($govTalkSenderId, $govTalkPassword, $service = 'live') {
 
@@ -282,27 +282,28 @@ class HmrcVat extends GovTalk {
 					}
 					$responseAcceptedTime = strtotime($successResponse->AcceptedTime);
 					
-					$declarationPeriodId = (string) $successResponse->ResponseData->VATDeclarationResponse->Header->PeriodId;
-					$declarationPeriodStart = strtotime($successResponse->ResponseData->VATDeclarationResponse->Header->PeriodStartDate);
-					$declarationPeriodEnd = strtotime($successResponse->ResponseData->VATDeclarationResponse->Header->PeriodEndDate);
+					$declarationResponse = $successResponse->ResponseData->VATDeclarationResponse;
+					$declarationPeriodId = (string) $declarationResponse->Header->PeriodId;
+					$declarationPeriodStart = strtotime($declarationResponse->Header->PeriodStartDate);
+					$declarationPeriodEnd = strtotime($declarationResponse->Header->PeriodEndDate);
 					
-               $paymentDueDate = strtotime($successResponse->ResponseData->VATDeclarationResponse->Body->PaymentDueDate);
-               $receiptTimestamp = strtotime($successResponse->ResponseData->VATDeclarationResponse->Body->ReceiptTimestamp);
+               $paymentDueDate = strtotime($declarationResponse->Body->PaymentDueDate);
+               $receiptTimestamp = strtotime($declarationResponse->Body->ReceiptTimestamp);
                
-               $paymentNarrative = (string) $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification->Narrative;
-               $paymentNetVat = (string) $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification->NetVAT;
+               $paymentNarrative = (string) $declarationResponse->Body->PaymentNotification->Narrative;
+               $paymentNetVat = (string) $declarationResponse->Body->PaymentNotification->NetVAT;
                
-               $paymentNotifcation = $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification;
-               if (isset($paymentNotifcation->NilPaymentIndicator)) {
-               
-               } else if (isset($paymentNotifcation->RepaymentIndicator)) {
-               
-               } else if (isset($paymentNotifcation->DirectDebitPaymentStatus)) {
-               
-               } else if (isset($paymentNotifcation->PaymentRequest)) {
-               
-               }
-               
+					$paymentNotifcation = $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification;
+					if (isset($paymentNotifcation->NilPaymentIndicator)) {
+
+					} else if (isset($paymentNotifcation->RepaymentIndicator)) {
+
+					} else if (isset($paymentNotifcation->DirectDebitPaymentStatus)) {
+
+					} else if (isset($paymentNotifcation->PaymentRequest)) {
+
+					}
+// page 64
 				} else if ($messageQualifier == 'acknowledgement') {
 					$returnable = $this->getResponseEndpoint();
 					$returnable['correlationid'] = $this->getResponseCorrelationId();
@@ -316,10 +317,6 @@ class HmrcVat extends GovTalk {
 		} else {
 			return false;
 		}
-	
-	}
-	
-	public function deleteRequest() {
 	
 	}
 
