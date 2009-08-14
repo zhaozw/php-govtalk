@@ -25,8 +25,6 @@
  * supports V2 of the HMRC VAT internet filing system.  The php-govtalk
  * base class needs including externally in order to use this extention.
  *
- * The IRmark validation scheme is currently not fully supported by this class.
- *
  * @author Jonathon Wardman
  * @copyright 2009, Fubra Limited
  * @licence http://www.gnu.org/licenses/gpl-3.0.txt GNU General Public License
@@ -49,7 +47,7 @@ class HmrcVat extends GovTalk {
 	 *
 	 * @var boolean
 	 */
-	private $_generateIRmark = false;
+	private $_generateIRmark = true;
 
  /* Magic methods. */
 
@@ -207,15 +205,8 @@ class HmrcVat extends GovTalk {
 							$package->endElement(); # VATDeclarationRequest
 						$package->endElement(); # IRenvelope
 
-	 // Generate IRmark and add it to the body...
-						$bodyText = $package->outputMemory();
-						if ($this->_generateIRmark === true) {
-							$irMark = base64_encode($this->_generateIRMark($bodyText));
-							$bodyText = str_replace('IRmark+Token', $irMark, $bodyText);
-						}
-
 	 // Send the message and deal with the response...
-						$this->setMessageBody($bodyText);
+						$this->setMessageBody($package);
 						if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 							$returnable = $this->getResponseEndpoint();
 							$returnable['correlationid'] = $this->getResponseCorrelationId();
@@ -293,6 +284,11 @@ class HmrcVat extends GovTalk {
 				if ($messageQualifier == 'response') {
 				
 					$successResponse = $this->_fullResponseObject->Body->SuccessResponse;
+					
+					if (isset($successResponse->IRmarkReceipt)) {
+						$irMarkReceipt = (string) $successResponse->IRmarkReceipt->Message;
+					}
+					
 					$responseMessage = array();
 					foreach ($successResponse->Message AS $message) {
 						$responseMessage[] = (string) $message;
@@ -321,6 +317,7 @@ class HmrcVat extends GovTalk {
 					}
 					
 					return array('message' => $responseMessage,
+					             'irmark' => $irMarkReceipt,
 					             'accept_time' => $responseAcceptedTime,
 					             'period' => $declarationPeriod,
 					             'payment' => $paymentDetails);
@@ -340,6 +337,34 @@ class HmrcVat extends GovTalk {
 		}
 	
 	}
+	
+ /* Protected methods. */
+
+	/**
+	 * Adds a valid IRmark to the given package.
+	 *
+	 * This function over-rides the packageDigest() function provided in the main
+	 * php-govtalk class.
+	 *
+	 * @param string $package The package to add the IRmark to.
+	 * @return string The new package after addition of the IRmark.
+	 */
+	protected function packageDigest($package) {
+	
+		if ($this->_generateIRmark === true) {
+			$packageSimpleXML = simplexml_load_string($package);
+			$packageNamespaces = $packageSimpleXML->getNamespaces();
+			
+			preg_match('/<Body>(.*?)<\/Body>/', str_replace("\n", '¬', $package), $matches);
+			$packageBody = str_replace('¬', "\n", $matches[1]);
+			
+			$irMark = base64_encode($this->_generateIRMark($packageBody, $packageNamespaces));
+			$package = str_replace('IRmark+Token', $irMark, $package);
+		}
+		
+		return $package;
+	
+	}
 
  /* Private methods. */
  
@@ -352,14 +377,30 @@ class HmrcVat extends GovTalk {
 	 * @param $xmlString string The XML to generate the IRmark hash from.
 	 * @return string The IRmark hash.
 	 */
-	private function _generateIRMark($xmlString) {
+	private function _generateIRMark($xmlString, $namespaces = null) {
 	
 		if (is_string($xmlString)) {
 			$xmlString = preg_replace('/<(vat:)?IRmark Type="generic">[A-Za-z0-9\/\+=]*<\/(vat:)?IRmark>/', '', $xmlString, -1, $matchCount);
 			if ($matchCount == 1) {
 				$xmlDom = new DOMDocument;
-				$xmlDom->loadXML('<Body xmlns="http://www.govtalk.gov.uk/CM/envelope">'."\n".$xmlString.'</Body>');
+				
+				if ($namespaces !== null && is_array($namespaces)) {
+					$namespaceString = array();
+					foreach ($namespaces AS $key => $value) {
+						if ($key !== '') {
+							$namespaceString[] = 'xmlns:'.$key.'="'.$value.'"';
+						} else {
+							$namespaceString[] = 'xmlns="'.$value.'"';
+						}
+					}
+					$bodyCompiled = '<Body '.implode(' ', $namespaceString).'>'.$xmlString.'</Body>';
+				} else {
+					$bodyCompiled = '<Body>'.$xmlString.'</Body>';
+				}
+				$xmlDom->loadXML($bodyCompiled);
+
 				return sha1($xmlDom->documentElement->C14N(), true);
+
 			} else {
 				return false;
 			}
