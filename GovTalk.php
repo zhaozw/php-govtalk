@@ -979,6 +979,24 @@ class GovTalk {
 	   return false;
 
 	}
+	
+	/**
+	 * This method is designed to be over-ridden by extending classes which
+	 * require the final XML package to be digested (and, perhaps, altered) in
+	 * a special way prior to transmission.
+	 *
+	 * These methods should take the full XML package as an argument and return
+	 * the new digested package. If the package is not altered by the digest it
+	 * must return the passed package unaltered.
+	 *
+	 * @param string $package The package to digest.
+	 * @return string The new (or unaltered) package after application of the digest.
+	 */
+	protected function packageDigest($package) {
+	
+		return $package;
+	
+	}
 
 	/**
 	 * Packages the message currently stored in the object into a valid GovTalk
@@ -1127,8 +1145,9 @@ class GovTalk {
 
 						$package->endElement(); # GovTalkMessage
 
-	 // Flush the buffer, validate the schema and return the XML...
-						$xmlPackage = $package->flush();
+	 // Flush the buffer, run any extension-specific digests, validate the schema
+	 // and return the XML...
+						$xmlPackage = $this->packageDigest($package->flush());
 						$validXMLRequest = true;
 						if (isset($this->_additionalXsiSchemaLocation) && ($this->_schemaValidation == true)) {
 							$validation = new DOMDocument();
