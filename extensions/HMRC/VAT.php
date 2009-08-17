@@ -34,11 +34,11 @@ class HmrcVat extends GovTalk {
  /* General IRenvelope related variables. */
 
 	/**
-	 * VAT number of the company this return is on the behalf of.
+	 * Details of the agent sending the return declaration.
 	 *
 	 * @var string
 	 */
-	private $_vatRegNumber;
+	private $_agentDetails = array();
 	
  /* System / internal variables. */
 
@@ -86,23 +86,6 @@ class HmrcVat extends GovTalk {
  /* Public methods. */
 
 	/**
-	 * Sets the VAT number to be used for this return submission (the number of
-	 * the company for which this return contains data).
-	 *
-	 * @param string $vatNumber The number to use in the submission.
-	 */
-	public function setVatNumber($vatNumber) {
-	
-		if (preg_match('/^(GB)?(\d{9,12})$/', $vatNumber, $vatNumberChunks)) {
-			$this->_vatRegNumber = $vatNumber;
-			$this->addMessageKey('VATRegNo', $vatNumber);
-		} else {
-			return false;
-		}
-	
-	}
-	
-	/**
 	 * Turns the IRmark generator on or off (by default the IRmark generator is
 	 * turned off). When it's switched off no IRmark element will be sent with
 	 * requests to HMRC.
@@ -113,6 +96,48 @@ class HmrcVat extends GovTalk {
 	
 		if (is_bool($flag)) {
 			$this->_generateIRmark = $flag;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Sets details about the agent submitting the declaration.
+	 *
+	 * The agent company's address should be specified in the following format:
+	 *   line => Array, each element containing a single line information.
+	 *   postcode => The agent company's postcode.
+	 *   country => The agent company's country. Defaults to England.
+	 *
+	 * The agent company's primary contact should be specified as follows:
+	 *   name => Array, format as follows:
+	 *     title => Contact's title (Mr, Mrs, etc.)
+	 *     forename => Contact's forename.
+	 *     surname => Contact's surname.
+	 *   email => Contact's email address (optional).
+	 *   telephone => Contact's telephone number (optional).
+	 *   fax => Contact's fax number (optional).
+	 *
+	 * @param string $company The agent company's name.
+	 * @param array $address The agent company's address in the format specified above.
+	 * @param array $contact The agent company's key contact in the format specified above (optional, may be skipped with a null value).
+	 * @param string $reference An identifier for the agent's own reference (optional).
+	 */
+	public function setAgentDetails($company, array $address, array $contact = null, $reference = null) {
+	
+		if (preg_match('/[A-Za-z0-9 &\'\(\)\*,\-\.\/]*/', $company)) {
+			$this->_agentDetails['company'] = $company;
+			$this->_agentDetails['address'] = $address;
+			if (!isset($this->_agentDetails['address']['country'])) {
+				$this->_agentDetails['address']['country'] = 'England';
+			}
+			if ($contact !== null) {
+				$this->_agentDetails['contact'] = $contact;
+			}
+			if (($reference !== null) && preg_match('/[A-Za-z0-9 &\'\(\)\*,\-\.\/]*/', $reference)) {
+				$this->_agentDetails['reference'] = $reference;
+			}
 		} else {
 			return false;
 		}
@@ -143,7 +168,7 @@ class HmrcVat extends GovTalk {
 	
 		$vatNumber = trim(str_replace(' ', '', $vatNumber));
 		if (preg_match('/^(GB)?(\d{9,12})$/', $vatNumber)) { # VAT number
-			$this->setVatNumber($vatNumber);
+			$this->addMessageKey('VATRegNo', $vatNumber);
 			if (preg_match('/^\d{4}-\d{2}$/', $returnPeriod)) { # VAT period
 				$validCapacities = array('Individual', 'Company', 'Agent',
 				                         'Bureau', 'Partnership', 'Trust',
@@ -167,10 +192,43 @@ class HmrcVat extends GovTalk {
 								$package->startElement('Keys');
 									$package->startElement('Key');
 										$package->writeAttribute('Type', 'VATRegNo');
-										$package->text($this->_vatRegNumber);
+										$package->text($vatNumber);
 									$package->endElement(); # Key
 								$package->endElement(); # Keys
 								$package->writeElement('PeriodID', $returnPeriod);
+								if (count($this->_agentDetails) > 0) {
+									$package->startElement('Agent');
+										if (isset($this->_agentDetails['reference'])) {
+											$package->writeElement('AgentID', $this->_agentDetails['reference']);
+										}
+										$package->writeElement('Company', $this->_agentDetails['company']);
+										$package->startElement('Address');
+											foreach ($this->_agentDetails['address']['line'] AS $line) {
+												$package->writeElement('Line', $line);
+											}
+											$package->writeElement('PostCode', $this->_agentDetails['address']['postcode']);
+											$package->writeElement('Country', $this->_agentDetails['address']['country']);
+										$package->endElement(); # Address
+										if (isset($this->_agentDetails['contact'])) {
+											$package->startElement('Contact');
+												$package->startElement('Name');
+													$package->writeElement('Ttl', $this->_agentDetails['contact']['name']['title']);
+													$package->writeElement('Fore', $this->_agentDetails['contact']['name']['forename']);
+													$package->writeElement('Sur', $this->_agentDetails['contact']['name']['surname']);
+												$package->endElement(); # Name
+												if (isset($this->_agentDetails['contact']['email'])) {
+													$package->writeElement('Email', $this->_agentDetails['contact']['email']);
+												}
+												if (isset($this->_agentDetails['contact']['telephone'])) {
+													$package->writeElement('Telephone', $this->_agentDetails['contact']['telephone']);
+												}
+												if (isset($this->_agentDetails['contact']['fax'])) {
+													$package->writeElement('Fax', $this->_agentDetails['contact']['fax']);
+												}
+											$package->endElement(); # Contact
+										}
+									$package->endElement(); # Agent
+								}
 								$package->writeElement('DefaultCurrency', 'GBP');
 								if ($this->_generateIRmark === true) {
 									$package->startElement('IRmark');
@@ -204,7 +262,7 @@ class HmrcVat extends GovTalk {
 								$package->writeElement('NetECAcquisitions', floor($netECAcq));
 							$package->endElement(); # VATDeclarationRequest
 						$package->endElement(); # IRenvelope
-
+						
 	 // Send the message and deal with the response...
 						$this->setMessageBody($package);
 						if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
