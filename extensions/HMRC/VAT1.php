@@ -76,12 +76,11 @@ class HmrcVat1 extends GovTalk {
 	 * @param float $vatECAcq VAT due on EC acquisitions (box 2).
 	 * @param float $vatReclaimedInput VAT reclaimed on inputs (box 4).
 	 * @param float $netOutput Net sales and outputs (box 6).
-	 * @param float $newInput Net purchases and inputs (box 7).
+	 * @param float $netInput Net purchases and inputs (box 7).
 	 * @param float $netECSupply Net EC supplies (box 8).
 	 * @param float $netECAcq Net EC acquisitions (box 9).
 	 * @param float $totalVat Total VAT (box 3). If this value is not specified then it will be calculated as box 1 + box 2. May be skipped by passing null.
 	 * @param float $netVat Net VAT (box 5). If this value is not specified then it will be calculated as the absolute difference between box 5 and box 4. May be skipped by passing null.
-	 * @param boolean $finalReturn Flag indicating if this return is a final VAT return.
 	 * @return mixed An array of 'endpoint', 'interval' and 'correlationid' on success, or false on failure.
 	 */
 	public function declarationRequest($vatNumber, $returnPeriod, $vatOutput, $vatECAcq, $vatReclaimedInput, $netOutput, $netInput, $netECSupply, $netECAcq, $totalVat = null, $netVat = null) {
@@ -102,34 +101,35 @@ class HmrcVat1 extends GovTalk {
 						$package->openMemory();
 						$package->setIndent(true);
 						$package->startElement('VATDeclarationRequest');
-							$package->writeAttribute('xmlns', 'http://www.govtalk.gov.uk/taxation/vat/core/1');
-							$package->writeAttributeNS('xsi', 'schemaLocation', 'http://www.w3.org/2001/XMLSchema-instance', 'http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/1VATDeclarationRequest.xsd');
+							$package->writeAttribute('xmlns', 'http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/1');
+							$package->writeAttribute('xmlns:VATCore', 'http://www.govtalk.gov.uk/taxation/vat/core/1');
+							$package->writeAttribute('xmlns:ns', 'http://www.govtalk.gov.uk/CM/gms-xs');
 							$package->writeAttribute('SchemaVersion', '1.0');
 							$package->startElement('Header');
-								$package->startElement('VATPeriod');
-									$package->writeElement('PeriodId', $returnPeriod);
+								$package->startElement('VATCore:VATPeriod');
+									$package->writeElement('VATCore:PeriodId', $returnPeriod);
 								$package->endElement(); # VATCore:VATPeriod
-								$package->writeElement('CurrencyCode', 'GBP');
+								$package->writeElement('VATCore:CurrencyCode', 'GBP');
 							$package->endElement(); # Header
 							$package->startElement('Body');
-								$package->writeElement('VATDueOnOutputs', sprintf('%.2f', $vatOutput));
-								$package->writeElement('VATDueOnECAcquisitions', sprintf('%.2f', $vatECAcq));
+								$package->writeElement('VATCore:VATDueOnOutputs', sprintf('%.2f', $vatOutput));
+								$package->writeElement('VATCore:VATDueOnECAcquisitions', sprintf('%.2f', $vatECAcq));
 								if ($totalVat === null) {
 									$totalVat = $vatOutput + $vatECAcq;
 								}
-								$package->writeElement('TotalVAT', sprintf('%.2f', $totalVat));
-								$package->writeElement('VATReclaimedOnInputs', sprintf('%.2f', $vatReclaimedInput));
+								$package->writeElement('VATCore:TotalVAT', sprintf('%.2f', $totalVat));
+								$package->writeElement('VATCore:VATReclaimedOnInputs', sprintf('%.2f', $vatReclaimedInput));
 								if ($netVat === null) {
 									$netVat = abs($totalVat - $vatReclaimedInput);
 								}
 								if ($netVat < 0) {
 								   return false;
 								}
-								$package->writeElement('NetVAT', sprintf('%.2f', $netVat));
-								$package->writeElement('NetSalesAndOutputs', floor($netOutput));
-								$package->writeElement('NetPurchasesAndInputs', floor($netInput));
-								$package->writeElement('NetECSupplies', floor($netECSupply));
-								$package->writeElement('NetECAcquisitions', floor($netECAcq));
+								$package->writeElement('VATCore:NetVAT', sprintf('%.2f', $netVat));
+								$package->writeElement('VATCore:NetSalesAndOutputs', floor($netOutput));
+								$package->writeElement('VATCore:NetPurchasesAndInputs', floor($netInput));
+								$package->writeElement('VATCore:NetECSupplies', floor($netECSupply));
+								$package->writeElement('VATCore:NetECAcquisitions', floor($netECAcq));
 							$package->endElement(); # Body
 						$package->endElement(); # VATDeclarationRequest
 						
@@ -168,7 +168,6 @@ class HmrcVat1 extends GovTalk {
 	 * and payment of any VAT due in the following array format:
 	 *
 	 *  message => an array of messages ('Thank you for your submission', etc.).
-	 *  accept_time => the time the submission was accepted by the HMRC server.
 	 *  period => an array of information relating to the period of the return:
 	 *    id => the period ID.
 	 *    start => the start date of the period.
@@ -203,36 +202,29 @@ class HmrcVat1 extends GovTalk {
 			$this->setMessageFunction('submit');
 			$this->resetMessageKeys();
 			$this->setMessageBody('');
-$this->sendMessage();
-var_dump($this->getFullXMLResponse()); exit;
-			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+			
 				$messageQualifier = (string) $this->_fullResponseObject->Header->MessageDetails->Qualifier;
 				if ($messageQualifier == 'response') {
 
-					$successResponse = $this->_fullResponseObject->Body->SuccessResponse;
-
-					if (isset($successResponse->IRmarkReceipt)) {
-						$irMarkReceipt = (string) $successResponse->IRmarkReceipt->Message;
-					}
-
+					$successResponse = $this->_fullResponseObject->Body->children('suc', true)->SuccessResponse;
+					
 					$responseMessage = array();
 					foreach ($successResponse->Message AS $message) {
 						$responseMessage[] = (string) $message;
 					}
-					$responseAcceptedTime = strtotime($successResponse->AcceptedTime);
+					
+					$declarationResponse = $successResponse->ResponseData->children('ns', true)->VATDeclarationResponse;
+					$declarationPeriod = array('id' => (string) $declarationResponse->Header->children('ns1', true)->VATPeriod->PeriodId,
+					                           'start' => strtotime($declarationResponse->Header->children('ns1', true)->VATPeriod->PeriodStartDate),
+					                           'end' => strtotime($declarationResponse->Header->children('ns1', true)->VATPeriod->PeriodEndDate));
+					$paymentDueDate = strtotime($declarationResponse->Body->children('ns1', true)->PaymentDueDate);
 
-					$declarationResponse = $successResponse->ResponseData->VATDeclarationResponse;
-					$declarationPeriod = array('id' => (string) $declarationResponse->Header->VATPeriod->PeriodId,
-					                           'start' => strtotime($declarationResponse->Header->VATPeriod->PeriodStartDate),
-					                           'end' => strtotime($declarationResponse->Header->VATPeriod->PeriodEndDate));
-
-					$paymentDueDate = strtotime($declarationResponse->Body->PaymentDueDate);
-
-               $paymentDetails = array('narrative' => (string) $declarationResponse->Body->PaymentNotification->Narrative,
-					                        'netvat' => (string) $declarationResponse->Body->PaymentNotification->NetVAT);
-
-					$paymentNotifcation = $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification;
+					$paymentNotifcation = $declarationResponse->Body->children('ns1', true)->PaymentNotification;
+               $paymentDetails = array('narrative' => (string) $paymentNotifcation->Narrative,
+					                        'netvat' => (string) $paymentNotifcation->NetVAT);
+					
 					if (isset($paymentNotifcation->NilPaymentIndicator)) {
 						$paymentDetails['payment'] = array('method' => 'nilpayment', 'additional' => null);
 					} else if (isset($paymentNotifcation->RepaymentIndicator)) {
@@ -244,8 +236,6 @@ var_dump($this->getFullXMLResponse()); exit;
 					}
 
 					return array('message' => $responseMessage,
-					             'irmark' => $irMarkReceipt,
-					             'accept_time' => $responseAcceptedTime,
 					             'period' => $declarationPeriod,
 					             'payment' => $paymentDetails);
 
