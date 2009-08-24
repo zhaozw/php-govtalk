@@ -345,6 +345,8 @@ class HmrcVat extends GovTalk {
 					
 					if (isset($successResponse->IRmarkReceipt)) {
 						$irMarkReceipt = (string) $successResponse->IRmarkReceipt->Message;
+					} else {
+						$irMarkReceipt = null;
 					}
 					
 					$responseMessage = array();
@@ -360,10 +362,10 @@ class HmrcVat extends GovTalk {
 
 					$paymentDueDate = strtotime($declarationResponse->Body->PaymentDueDate);
 
-               $paymentDetails = array('narrative' => (string) $declarationResponse->Body->PaymentNotification->Narrative,
-					                        'netvat' => (string) $declarationResponse->Body->PaymentNotification->NetVAT);
+					$paymentNotifcation = $declarationResponse->Body->PaymentNotification;
+               $paymentDetails = array('narrative' => (string) $paymentNotifcation->Narrative,
+					                        'netvat' => (string) $paymentNotifcation->NetVAT);
                
-					$paymentNotifcation = $successResponse->ResponseData->VATDeclarationResponse->Body->PaymentNotification;
 					if (isset($paymentNotifcation->NilPaymentIndicator)) {
 						$paymentDetails['payment'] = array('method' => 'nilpayment', 'additional' => null);
 					} else if (isset($paymentNotifcation->RepaymentIndicator)) {
