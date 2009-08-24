@@ -222,7 +222,7 @@ class HmrcVat1 extends GovTalk {
 					$paymentDueDate = strtotime($declarationResponse->Body->children('ns1', true)->PaymentDueDate);
 
 					$paymentNotifcation = $declarationResponse->Body->children('ns1', true)->PaymentNotification;
-               $paymentDetails = array('narrative' => (string) $paymentNotifcation->Narrative,
+					$paymentDetails = array('narrative' => (string) $paymentNotifcation->Narrative,
 					                        'netvat' => (string) $paymentNotifcation->NetVAT);
 					
 					if (isset($paymentNotifcation->NilPaymentIndicator)) {

@@ -156,7 +156,7 @@ class HmrcVat extends GovTalk {
 	 * @param float $vatECAcq VAT due on EC acquisitions (box 2).
 	 * @param float $vatReclaimedInput VAT reclaimed on inputs (box 4).
 	 * @param float $netOutput Net sales and outputs (box 6).
-	 * @param float $newInput Net purchases and inputs (box 7).
+	 * @param float $netInput Net purchases and inputs (box 7).
 	 * @param float $netECSupply Net EC supplies (box 8).
 	 * @param float $netECAcq Net EC acquisitions (box 9).
 	 * @param float $totalVat Total VAT (box 3). If this value is not specified then it will be calculated as box 1 + box 2. May be skipped by passing null.
