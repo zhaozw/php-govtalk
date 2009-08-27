@@ -57,7 +57,7 @@ class HmrcVat1 extends GovTalk {
 				parent::__construct('https://secure.gateway.gov.uk/submission', $govTalkSenderId, $govTalkPassword);
 			break;
 		}
-		
+
 		$this->setMessageAuthentication('clear');
 		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC VAT1 extension', '0.1');
 
@@ -132,7 +132,7 @@ class HmrcVat1 extends GovTalk {
 								$package->writeElement('VATCore:NetECAcquisitions', floor($netECAcq));
 							$package->endElement(); # Body
 						$package->endElement(); # VATDeclarationRequest
-						
+
 	 // Send the message and deal with the response...
 						$this->setMessageBody($package);
 						if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
@@ -204,17 +204,17 @@ class HmrcVat1 extends GovTalk {
 			$this->setMessageBody('');
 
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
-			
+
 				$messageQualifier = (string) $this->_fullResponseObject->Header->MessageDetails->Qualifier;
 				if ($messageQualifier == 'response') {
 
 					$successResponse = $this->_fullResponseObject->Body->children('suc', true)->SuccessResponse;
-					
+
 					$responseMessage = array();
 					foreach ($successResponse->Message AS $message) {
 						$responseMessage[] = (string) $message;
 					}
-					
+
 					$declarationResponse = $successResponse->ResponseData->children('ns', true)->VATDeclarationResponse;
 					$declarationPeriod = array('id' => (string) $declarationResponse->Header->children('ns1', true)->VATPeriod->PeriodId,
 					                           'start' => strtotime($declarationResponse->Header->children('ns1', true)->VATPeriod->PeriodStartDate),
@@ -224,7 +224,7 @@ class HmrcVat1 extends GovTalk {
 					$paymentNotifcation = $declarationResponse->Body->children('ns1', true)->PaymentNotification;
 					$paymentDetails = array('narrative' => (string) $paymentNotifcation->Narrative,
 					                        'netvat' => (string) $paymentNotifcation->NetVAT);
-					
+
 					if (isset($paymentNotifcation->NilPaymentIndicator)) {
 						$paymentDetails['payment'] = array('method' => 'nilpayment', 'additional' => null);
 					} else if (isset($paymentNotifcation->RepaymentIndicator)) {
@@ -235,7 +235,8 @@ class HmrcVat1 extends GovTalk {
 						$paymentDetails['payment'] = array('method' => 'payment', 'additional' => (string) $paymentNotifcation->PaymentRequest->DirectDebitInstructionStatus);
 					}
 
-					return array('message' => $responseMessage,
+					return array('success' => true,
+					             'message' => $responseMessage,
 					             'period' => $declarationPeriod,
 					             'payment' => $paymentDetails);
 
@@ -247,7 +248,16 @@ class HmrcVat1 extends GovTalk {
 					return false;
 				}
 			} else {
-				return false;
+				$errorArray = $this->getResponseErrors();
+				if (count($errorArray['business']) > 0) {
+					$returnArray = array();
+					foreach ($this->_fullResponseObject->Body->children('err', true)->ErrorResponse->Error AS $errorResponse) {
+						$returnArray[] = (string) $errorResponse->Text;
+					}
+					return array('error' => $returnArray);
+				} else {
+					return false;
+				}
 			}
 		} else {
 			return false;
