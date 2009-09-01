@@ -892,6 +892,46 @@ class GovTalk {
 		}
 	
 	}
+	
+	/**
+	 * Submits and processes a generic list request. By default the request
+	 * refers to the last stored message class, but this behaviour can be over-
+	 * ridden by providing a different class to the method.
+	 *
+	 * @param string $messageClass The class of request to list
+	 */
+	public function listRequest($messageClass = null) {
+
+		if ($messageClass === null) {
+			$messageClass = $this->_messageClass;
+		}
+		
+		$this->setMessageClass($messageClass);
+		$this->setMessageClass($messageClass);
+		$this->setMessageQualifier('request');
+		$this->setMessageFunction('list');
+		$this->setMessageCorrelationId('');
+		$this->setMessageBody('');
+
+		if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+			if ((string) $this->_fullResponseObject->Header->MessageDetails->Qualifier == 'response') {
+				$returnArray = array();
+				foreach ($this->_fullResponseObject->Body->StatusReport->StatusRecord AS $reportNode) {
+					$returnArray[] = array('timestamp' => strtotime((string) $reportNode->TimeStamp),
+					                       'correlation' => (string) $reportNode->CorrelationID,
+					                       'transaction' => (string) $reportNode->TransactionID,
+					                       'status' => (string) $reportNode->Status);
+				}
+				return $returnArray;
+			} else {
+				return false;
+			}
+			exit;
+		} else {
+			return false;
+		}
+
+	}
 
  /* Message sending related methods. */
 
