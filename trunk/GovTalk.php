@@ -900,7 +900,7 @@ class GovTalk {
 	 *
 	 * @param string $messageClass The class of request to list
 	 */
-	public function listRequest($messageClass = null) {
+	public function sendListRequest($messageClass = null) {
 
 		if ($messageClass === null) {
 			$messageClass = $this->_messageClass;
