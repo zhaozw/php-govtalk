@@ -391,7 +391,7 @@ class GovTalk {
 	 * @return mixed The message body as a SimpleXML object, or false if this isn't set.
 	 */
 	public function getResponseBody() {
-
+	
 		if (isset($this->_fullResponseObject)) {
 			return $this->_fullResponseObject->Body;
 		} else {
@@ -1229,8 +1229,10 @@ class GovTalk {
 	 * @return boolean Always returns true.
 	 */
 	private function _generateTransactionId() {
-
-		$this->_transactionId = str_replace('.', '', microtime(true));
+	
+		list($usec, $sec) = explode(' ', microtime());
+		$this->_transactionId = $sec.str_replace('0.', '', $usec);
+		echo $this->_transactionId;
 		return true;
 
 	}
