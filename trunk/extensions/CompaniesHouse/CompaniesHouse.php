@@ -44,6 +44,7 @@ class CompaniesHouse extends GovTalk {
 	
 		parent::__construct('http://xmlgw.companieshouse.gov.uk/v1-0/xmlgw/Gateway', $govTalkSenderId, $govTalkPassword);
 		$this->setSchemaLocation('http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd');
+		$this->setSchemaValidation(false);
 		$this->setMessageAuthentication('alternative');
 		$this->setMessageQualifier('request');
 		
@@ -468,7 +469,7 @@ class CompaniesHouse extends GovTalk {
 				if (isset($filingHistoryBody->FHistItem)) {
 					$filingHistory = array();
 					foreach ($filingHistoryBody->FHistItem AS $historyItem) {
-						$thisHistoryItem = array('date' => (string) $historyItem->DocumentDate,
+						$thisHistoryItem = array('date' => strtotime((string) $historyItem->DocumentDate),
 						                         'type' => (string) $historyItem->FormType);
 						foreach ($historyItem->DocumentDesc AS $documentDescription) {
 							$thisHistoryItem['description'][] = (string) $documentDescription;
