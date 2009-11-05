@@ -1232,7 +1232,6 @@ class GovTalk {
 	
 		list($usec, $sec) = explode(' ', microtime());
 		$this->_transactionId = $sec.str_replace('0.', '', $usec);
-		echo $this->_transactionId;
 		return true;
 
 	}
