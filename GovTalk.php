@@ -1216,6 +1216,48 @@ class GovTalk {
 		}
 
 	}
+	
+	/**
+	 * Packages the given array into an XMLWriter object where each element takes
+	 * its name from the array index, and its value from the array value.  In the
+	 * case of nested arrays each level is added below the previous element (as
+	 * you would expect).  Where an array has numeric indices each element takes
+	 * its name from the parent array.
+	 *
+	 * @param mixed $informationArray The information to be turned into an XMLWriter object.
+	 * @param string $parentElement The name of the parent element, to be applied if the current $informationArray is numerically indexed.
+	 * @return XMLWriter An XMLWriter object representing the given array in XML.
+	 */
+	protected function _xmlPackageArray($informationArray, $parentElement = null) {
+
+		if (is_array($informationArray)) {
+			$package = new XMLWriter();
+			$package->openMemory();
+			$package->setIndent(true);
+			foreach ($informationArray AS $elementKey => $elementValue) {
+				if (is_array($elementValue)) {
+					$packagedArray = $this->_xmlPackageArray($elementValue, $elementKey);
+					reset($elementValue);
+					if (!is_int(key($elementValue))) {
+						$package->startElement($elementKey);
+							$package->writeRaw("\n".trim($packagedArray->outputMemory())."\n");
+						$package->endElement();
+					} else {
+						$package->writeRaw("\n".trim($packagedArray->outputMemory())."\n");
+					}
+				} else {
+					if (is_int($elementKey)) {
+						$elementKey = $parentElement;
+					}
+					$package->writeElement($elementKey, $elementValue);
+				}
+			}
+			return $package;
+		} else {
+			return false;
+		}
+
+	}
 
  /* Private methods. */
 
