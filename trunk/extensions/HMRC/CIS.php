@@ -187,10 +187,31 @@ public function test() { return $this->_subContractorList; }
 	}
 	
 	/**
-	 * Adds a subcontractor to the list of subcontractors which will be used to
-	 * build this return.
+	 * Defines this return as a nil return.  When the return is set as a nil
+	 * return no subcontractor information should be set.  Therefore, if any
+	 * subcontractor information exists when this method is called the method
+	 * will return false.  Likewise, if this method has been set called and
+	 * addSubContractor() is called subsiquently, addSubContractor() will fail.
 	 *
-	 * The sub-contractor's details should be specified in an array as follows:
+	 * @return boolean True if this instance is set as a nil return, false if it cannot be set.
+	 */
+	public function setNilReturn() {
+	
+		if (count($this->_subContractorList) == 0) {
+			$this->_nilReturn = true;
+			return true;
+		} else {
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Adds a subcontractor to the list of subcontractors which will be used to
+	 * build this return.  Subcontractors cannot be added if this return has
+	 * already been set as a nil return.
+	 *
+	 * The subcontractor's details should be specified in an array as follows:
 	 *   name => Array or string. If this element is a string it is assumed this is a company trading name, if it's an array it is assumed to be an individual's name and must be in the following format:
 	 *     title => Contractor's title (Mr, Mrs, etc.)
 	 *     forename => An array of the contractor's forename(s). Maximum of 2 forenames.
@@ -210,104 +231,109 @@ public function test() { return $this->_subContractorList; }
 	 **/
 	public function addSubContractor(array $subContractorDetails) {
 	
-		$newSubContractor = array();
+		if ($this->_nilReturn === false) {
+			$newSubContractor = array();
 		
 	 // Contractor name, also controls some other requirements...
-		if (isset($subContractorDetails['name'])) {
-			if (is_array($subContractorDetails['name'])) {
-				if (isset($subContractorDetails['name']['forename']) && isset($subContractorDetails['name']['surname'])) {
-					$newSubContractor['Name'] = array();
-					if (!is_array($subContractorDetails['name']['forename'])) {
-						$subContractorDetails['name']['forename'][] = $subContractorDetails['name']['forename'];
-					}
-					foreach ($subContractorDetails['name']['forename'] AS $forenameElement) {
-						$forenameLength = strlen($forenameElement);
-						if (($forenameLength > 0) && ($forenameLength < 36) && preg_match('/[A-Za-z][A-Za-z\'\-]*/', $forenameElement)) {
-							$newSubContractor['Name']['Fore'][] = $forenameElement;
+			if (isset($subContractorDetails['name'])) {
+				if (is_array($subContractorDetails['name'])) {
+					if (isset($subContractorDetails['name']['forename']) && isset($subContractorDetails['name']['surname'])) {
+						$newSubContractor['Name'] = array();
+						if (!is_array($subContractorDetails['name']['forename'])) {
+							$subContractorDetails['name']['forename'][] = $subContractorDetails['name']['forename'];
 						}
-					}
-					$surnameLength = strlen($subContractorDetails['name']['surname']);
-					if (($surnameLength > 0) && ($surnameLength < 36) && preg_match('/[A-Za-z0-9 ,\.\(\)\/&\-\']+/', $subContractorDetails['name']['surname'])) {
-						$newSubContractor['Name']['Sur'] = $subContractorDetails['name']['surname'];
+						foreach ($subContractorDetails['name']['forename'] AS $forenameElement) {
+							$forenameLength = strlen($forenameElement);
+							if (($forenameLength > 0) && ($forenameLength < 36) && preg_match('/[A-Za-z][A-Za-z\'\-]*/', $forenameElement)) {
+								$newSubContractor['Name']['Fore'][] = $forenameElement;
+							}
+						}
+						$surnameLength = strlen($subContractorDetails['name']['surname']);
+						if (($surnameLength > 0) && ($surnameLength < 36) && preg_match('/[A-Za-z0-9 ,\.\(\)\/&\-\']+/', $subContractorDetails['name']['surname'])) {
+							$newSubContractor['Name']['Sur'] = $subContractorDetails['name']['surname'];
+						} else {
+							return false;
+						}
 					} else {
 						return false;
 					}
+					if (isset($subContractorDetails['name']['title']) && preg_match('/[A-Za-z][A-Za-z\'\-]*/', $subContractorDetails['name']['title'])) {
+						$newSubContractor['Name']['Ttl'] = $subContractorDetails['name']['title'];
+					}
+	 // NINO...
+						if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
+							$newSubContractor['NINO'] = $subContractorDetails['nino'];
+						}
+				} else {
+					$companyNameLength = strlen($subContractorDetails['name']);
+					if (($companyNameLength < 57) && preg_match('/\S.*/', $subContractorDetails['name'])) {
+						$newSubContractor['TradingName'] = $subContractorDetails['name'];
+	 // CRN...
+						if (isset($subContractorDetails['crn']) && preg_match('/[A-Za-z]{2}[0-9]{1,6}|[0-9]{1,8}/', $subContractorDetails['crn'])) {
+							$newSubContractor['CRN'] = $subContractorDetails['crn'];
+						}
+					} else {
+						return false;
+					}
+				}
+			} else {
+				return false;
+			}
+		
+	 // Unmatched rate, also controls other requirements...
+			if (isset($subContractorDetails['higherrate'])) {
+				if ($subContractorDetails['higherrate'] === true) {
+					$newSubContractor['UnmatchedRate'] = 'yes';
+				}
+			}
+			if (!isset($newSubContractor['UnmatchedRate'])) {
+	 // UTR...
+				if (isset($subContractorDetails['utr']) && preg_match('/[0-9]{10}/', $subContractorDetails['utr'])) {
+					$newSubContractor['UTR'] = $subContractorDetails['utr'];
 				} else {
 					return false;
 				}
-				if (isset($subContractorDetails['name']['title']) && preg_match('/[A-Za-z][A-Za-z\'\-]*/', $subContractorDetails['name']['title'])) {
-					$newSubContractor['Name']['Ttl'] = $subContractorDetails['name']['title'];
+	 // Total payments made...
+				if (isset($subContractorDetails['totalpayments']) && is_numeric($subContractorDetails['totalpayments']) && ($subContractorDetails['totalpayments'] >= 0) && ($subContractorDetails['totalpayments'] <= 99999999)) {
+					$newSubContractor['TotalPayments'] = sprintf('%.2f', round($subContractorDetails['totalpayments']));
+				} else {
+					return false;
 				}
-	 // NINO...
-					if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
-						$newSubContractor['NINO'] = $subContractorDetails['nino'];
-					}
-			} else {
-				$companyNameLength = strlen($subContractorDetails['name']);
-				if (($companyNameLength < 57) && preg_match('/\S.*/', $subContractorDetails['name'])) {
-					$newSubContractor['TradingName'] = $subContractorDetails['name'];
-	 // CRN...
-					if (isset($subContractorDetails['crn']) && preg_match('/[A-Za-z]{2}[0-9]{1,6}|[0-9]{1,8}/', $subContractorDetails['crn'])) {
-						$newSubContractor['CRN'] = $subContractorDetails['crn'];
-					}
+	 // Cost of materials...
+				if (isset($subContractorDetails['materialcost']) && is_numeric($subContractorDetails['materialcost']) && ($subContractorDetails['materialcost'] >= 0) && ($subContractorDetails['materialcost'] <= 99999999)) {
+					$newSubContractor['CostOfMaterials'] = sprintf('%.2f', round($subContractorDetails['materialcost']));
+				} else {
+					return false;
+				}
+	 // Total amount deducted...
+				if (isset($subContractorDetails['totaldeducted']) && is_numeric($subContractorDetails['totaldeducted']) && ($subContractorDetails['totaldeducted'] >= 0) && ($subContractorDetails['totaldeducted'] <= 99999999.99)) {
+					$newSubContractor['TotalDeducted'] = sprintf('%.2f', $subContractorDetails['totaldeducted']);
 				} else {
 					return false;
 				}
 			}
+
+	 // Subcontractor verifcation number...
+			if (isset($subContractorDetails['verifcation'])) {
+				$subContractorDetails['verifcation'] = strtoupper($subContractorDetails['verifcation']);
+				if (preg_match('/V[0-9]{10}[A-HJ-NP-Z]{0,2}/', $subContractorDetails['verifcation'])) {
+					$newSubContractor['VerificationNumber'] = $subContractorDetails['verifcation'];
+				}
+			}
+		
+	 // Works reference...
+			if (isset($subContractorDetails['worksref'])) {
+				if (strlen($subContractorDetails['worksref']) < 21) {
+					$newSubContractor['WorksRef'] = $subContractorDetails['worksref'];
+				}
+			}
+
+			$this->_subContractorList[] = $newSubContractor;
+			return (count($this->_subContractorList) - 1);
+		
 		} else {
 			return false;
 		}
-		
-	 // Unmatched rate, also controls other requirements...
-		if (isset($subContractorDetails['higherrate'])) {
-			if ($subContractorDetails['higherrate'] === true) {
-				$newSubContractor['UnmatchedRate'] = 'yes';
-			}
-		}
-		if (!isset($newSubContractor['UnmatchedRate'])) {
-	 // UTR...
-			if (isset($subContractorDetails['utr']) && preg_match('/[0-9]{10}/', $subContractorDetails['utr'])) {
-				$newSubContractor['UTR'] = $subContractorDetails['utr'];
-			} else {
-				return false;
-			}
-	 // Total payments made...
-			if (isset($subContractorDetails['totalpayments']) && is_numeric($subContractorDetails['totalpayments']) && ($subContractorDetails['totalpayments'] >= 0) && ($subContractorDetails['totalpayments'] <= 99999999)) {
-				$newSubContractor['TotalPayments'] = sprintf('%.2f', round($subContractorDetails['totalpayments']));
-			} else {
-				return false;
-			}
-	 // Cost of materials...
-			if (isset($subContractorDetails['materialcost']) && is_numeric($subContractorDetails['materialcost']) && ($subContractorDetails['materialcost'] >= 0) && ($subContractorDetails['materialcost'] <= 99999999)) {
-				$newSubContractor['CostOfMaterials'] = sprintf('%.2f', round($subContractorDetails['materialcost']));
-			} else {
-				return false;
-			}
-	 // Total amount deducted...
-			if (isset($subContractorDetails['totaldeducted']) && is_numeric($subContractorDetails['totaldeducted']) && ($subContractorDetails['totaldeducted'] >= 0) && ($subContractorDetails['totaldeducted'] <= 99999999.99)) {
-				$newSubContractor['TotalDeducted'] = sprintf('%.2f', $subContractorDetails['totaldeducted']);
-			} else {
-				return false;
-			}
-		}
-
-	 // Subcontractor verifcation number...
-		if (isset($subContractorDetails['verifcation'])) {
-			$subContractorDetails['verifcation'] = strtoupper($subContractorDetails['verifcation']);
-			if (preg_match('/V[0-9]{10}[A-HJ-NP-Z]{0,2}/', $subContractorDetails['verifcation'])) {
-				$newSubContractor['VerificationNumber'] = $subContractorDetails['verifcation'];
-			}
-		}
-		
-	 // Works reference...
-		if (isset($subContractorDetails['worksref'])) {
-			if (strlen($subContractorDetails['worksref']) < 21) {
-				$newSubContractor['WorksRef'] = $subContractorDetails['worksref'];
-			}
-		}
-		
-		$this->_subContractorList[] = $newSubContractor;
-		return (count($this->_subContractorList) - 1);
 	
 	}
 	
