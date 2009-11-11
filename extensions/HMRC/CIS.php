@@ -172,6 +172,7 @@ public function test() { return $this->_subContractorList; }
 	 *
 	 * @param string $utr Contractor's UTR.
 	 * @param string $aoRef Contractor's Accounts Office Reference Number.
+	 * @return boolean True on success, false on failure.
 	 */
 	public function setContractorDetails($utr, $aoRef) {
 	
@@ -205,6 +206,7 @@ public function test() { return $this->_subContractorList; }
 	 *  totaldeducted => The total value of deductions taken from this subcontractor's payments.
 	 *
 	 * @param array $subContractorDetails An array containing the details of the sub-contractor (see above).
+	 * @return mixed The ID of the subcontrator added (base 0), or false if the subcontractor could not be added.
 	 **/
 	public function addSubContractor(array $subContractorDetails) {
 	
@@ -305,7 +307,26 @@ public function test() { return $this->_subContractorList; }
 		}
 		
 		$this->_subContractorList[] = $newSubContractor;
-		return true;
+		return (count($this->_subContractorList) - 1);
+	
+	}
+	
+	/**
+	 * Removes a subcontractor from the list of subcontractors which will be used
+	 * to build this return.
+	 */
+	public function deleteSubContractor($subContractorId) {
+	
+		if (is_int($subContractorId)) {
+			if (isset($this->_subContractorList[$subContractorId])) {
+				unset($this->_subContractorList[$subContractorId]);
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
 	
 	}
 
