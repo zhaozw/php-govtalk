@@ -30,8 +30,6 @@
  */
 class HmrcCis extends GovTalk {
 
-public function test() { return $this->_subContractorList; }
-
  /* General IRenvelope related variables. */
 
 	/**
@@ -44,13 +42,6 @@ public function test() { return $this->_subContractorList; }
  /* System / internal variables. */
 
 	/**
-	 * Details of the contractor making this return.
-	 *
-	 * @var array
-	 */
-	private $_contractorDetails = null;
-
-	/**
 	 * Details of all the sub contractors to be submitted with this return.
 	 *
 	 * @var array
@@ -58,11 +49,39 @@ public function test() { return $this->_subContractorList; }
 	private $_subContractorList = array();
 	
 	/**
+	 * Flag indicating if all subcontractors' status has been checked.
+	 *
+	 * @var boolean
+	 */
+	private $_employmentStatusFlag;
+	
+	/**
+	 * Flag indicating if all subcontractors have been verified with HMRC.
+	 *
+	 * @var boolean
+	 */
+	private $_verifcationFlag;
+	
+	/**
 	 * Flag indicating if this return is a nil return.
 	 *
 	 * @var boolean
 	 */
 	private $_nilReturn = false;
+
+	/**
+	 * The Tax Office Number for this return.
+	 *
+	 * @var string
+	 */
+	private $_taxOfficeNumber;
+
+	/**
+	 * The Tax Office Reference for this return.
+	 *
+	 * @var string
+	 */
+	private $_taxOfficeReference;
 
 	/**
 	 * Flag indicating if the IRmark should be generated for outgoing XML.
@@ -97,8 +116,6 @@ public function test() { return $this->_subContractorList; }
 				parent::__construct('https://secure.gateway.gov.uk/submission', $govTalkSenderId, $govTalkPassword);
 			break;
 		}
-
-		$this->setSchemaLocation('http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/2/VATDeclarationRequest-v2-1.xsd', false);
 
 		$this->setMessageAuthentication('clear');
 		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC CIS extension', '0.1');
@@ -167,18 +184,19 @@ public function test() { return $this->_subContractorList; }
 	}
 	
 	/**
-	 * Sets details about the contractor making the declaration. These details
-	 * are mandatory for a return.
+	 * Sets the Tax Office Number and Tax Office Reference of the person
+	 * submitting the return.  These must be set in order for a retun to be
+	 * submitted to HMRC.
 	 *
-	 * @param string $utr Contractor's UTR.
-	 * @param string $aoRef Contractor's Accounts Office Reference Number.
+	 * @param string $taxOfficeNumber The Tax Office Number.
+	 * @param string $taxOfficeReference The Tax Office Reference.
 	 * @return boolean True on success, false on failure.
 	 */
-	public function setContractorDetails($utr, $aoRef) {
+	public function setTaxOfficeDetails($taxOfficeNumber, $taxOfficeReference) {
 	
-		if ((is_numeric($utr) && (strlen($utr) == 10)) && preg_match('/[0-9]{3}P[A-Za-z][A-Za-z0-9]{8}/', $aoRef)) {
-			$this->_contractorDetails = array('UTR' => $utr,
-			                                  'AORef' => $aoRef);
+		if ($this->addMessageKey('TaxOfficeNumber', $taxOfficeNumber) && $this->addMessageKey('TaxOfficeReference', $taxOfficeReference)) {
+			$this->_taxOfficeNumber = $taxOfficeNumber;
+			$this->_taxOfficeReference = $taxOfficeReference;
 			return true;
 		} else {
 			return false;
@@ -227,71 +245,82 @@ public function test() { return $this->_subContractorList; }
 	 *  totaldeducted => The total value of deductions taken from this subcontractor's payments.
 	 *
 	 * @param array $subContractorDetails An array containing the details of the sub-contractor (see above).
+	 * @param boolean $employmentStatus Flag indicating if the employment status of this subcontractor has "been considered and payments have not been made under contracts of employment".
+	 * @param boolean $verified Flag indicating if this contractor "has either been verified with HM Revenue & Customs, or has been included in previous CIS return in this, or the previous two tax years".
 	 * @return mixed The ID of the subcontrator added (base 0), or false if the subcontractor could not be added.
 	 **/
-	public function addSubContractor(array $subContractorDetails) {
+	public function addSubContractor(array $subContractorDetails, $employmentStatus, $verified) {
 	
 		if ($this->_nilReturn === false) {
-			$newSubContractor = array();
+		
+			if (is_bool($employmentStatus) && is_bool($verified)) {
+				$newSubContractor = array();
+				if ($this->_employmentStatusFlag !== false) {
+					$this->_employmentStatusFlag = $employmentStatus;
+				}
+				if ($this->_verifcationFlag !== false) {
+					$this->_verifcationFlag = $verified;
+				}
 		
 	 // Contractor name, also controls some other requirements...
-			if (isset($subContractorDetails['name'])) {
-				if (is_array($subContractorDetails['name'])) {
-					if (isset($subContractorDetails['name']['forename']) && isset($subContractorDetails['name']['surname'])) {
-						$newSubContractor['Name'] = array();
-						if (!is_array($subContractorDetails['name']['forename'])) {
-							$subContractorDetails['name']['forename'][] = $subContractorDetails['name']['forename'];
-						}
-						foreach ($subContractorDetails['name']['forename'] AS $forenameElement) {
-							$forenameLength = strlen($forenameElement);
-							if (($forenameLength > 0) && ($forenameLength < 36) && preg_match('/[A-Za-z][A-Za-z\'\-]*/', $forenameElement)) {
-								$newSubContractor['Name']['Fore'][] = $forenameElement;
+				if (isset($subContractorDetails['name'])) {
+					if (is_array($subContractorDetails['name'])) {
+						if (isset($subContractorDetails['name']['forename']) && isset($subContractorDetails['name']['surname'])) {
+							$newSubContractor['Name'] = array();
+							if (!is_array($subContractorDetails['name']['forename'])) {
+								$subContractorDetails['name']['forename'][] = $subContractorDetails['name']['forename'];
 							}
-						}
-						$surnameLength = strlen($subContractorDetails['name']['surname']);
-						if (($surnameLength > 0) && ($surnameLength < 36) && preg_match('/[A-Za-z0-9 ,\.\(\)\/&\-\']+/', $subContractorDetails['name']['surname'])) {
-							$newSubContractor['Name']['Sur'] = $subContractorDetails['name']['surname'];
+							foreach ($subContractorDetails['name']['forename'] AS $forenameElement) {
+								$forenameLength = strlen($forenameElement);
+								if (($forenameLength > 0) && ($forenameLength < 36) && preg_match('/[A-Za-z][A-Za-z\'\-]*/', $forenameElement)) {
+									$newSubContractor['Name']['Fore'][] = $forenameElement;
+								}
+							}
+							$surnameLength = strlen($subContractorDetails['name']['surname']);
+							if (($surnameLength > 0) && ($surnameLength < 36) && preg_match('/[A-Za-z0-9 ,\.\(\)\/&\-\']+/', $subContractorDetails['name']['surname'])) {
+								$newSubContractor['Name']['Sur'] = $subContractorDetails['name']['surname'];
+							} else {
+								return false;
+							}
 						} else {
 							return false;
 						}
-					} else {
-						return false;
-					}
-					if (isset($subContractorDetails['name']['title']) && preg_match('/[A-Za-z][A-Za-z\'\-]*/', $subContractorDetails['name']['title'])) {
-						$newSubContractor['Name']['Ttl'] = $subContractorDetails['name']['title'];
-					}
-	 // NINO...
-						if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
-							$newSubContractor['NINO'] = $subContractorDetails['nino'];
+						if (isset($subContractorDetails['name']['title']) && preg_match('/[A-Za-z][A-Za-z\'\-]*/', $subContractorDetails['name']['title'])) {
+							$newSubContractor['Name']['Ttl'] = $subContractorDetails['name']['title'];
 						}
-				} else {
-					$companyNameLength = strlen($subContractorDetails['name']);
-					if (($companyNameLength < 57) && preg_match('/\S.*/', $subContractorDetails['name'])) {
-						$newSubContractor['TradingName'] = $subContractorDetails['name'];
+					} else {
+						$companyNameLength = strlen($subContractorDetails['name']);
+						if (($companyNameLength < 57) && preg_match('/\S.*/', $subContractorDetails['name'])) {
+							$newSubContractor['TradingName'] = $subContractorDetails['name'];
 	 // CRN...
-						if (isset($subContractorDetails['crn']) && preg_match('/[A-Za-z]{2}[0-9]{1,6}|[0-9]{1,8}/', $subContractorDetails['crn'])) {
-							$newSubContractor['CRN'] = $subContractorDetails['crn'];
+							if (isset($subContractorDetails['crn']) && preg_match('/[A-Za-z]{2}[0-9]{1,6}|[0-9]{1,8}/', $subContractorDetails['crn'])) {
+								$newSubContractor['CRN'] = $subContractorDetails['crn'];
+							}
+						} else {
+							return false;
 						}
-					} else {
-						return false;
+					}
+				} else {
+					return false;
+				}
+
+	 // Unmatched rate, also controls other requirements...
+				if (isset($subContractorDetails['higherrate'])) {
+					if ($subContractorDetails['higherrate'] === true) {
+						$newSubContractor['UnmatchedRate'] = 'yes';
 					}
 				}
-			} else {
-				return false;
-			}
-		
-	 // Unmatched rate, also controls other requirements...
-			if (isset($subContractorDetails['higherrate'])) {
-				if ($subContractorDetails['higherrate'] === true) {
-					$newSubContractor['UnmatchedRate'] = 'yes';
-				}
-			}
-			if (!isset($newSubContractor['UnmatchedRate'])) {
+				if (!isset($newSubContractor['UnmatchedRate'])) { }
+				
 	 // UTR...
 				if (isset($subContractorDetails['utr']) && preg_match('/[0-9]{10}/', $subContractorDetails['utr'])) {
 					$newSubContractor['UTR'] = $subContractorDetails['utr'];
 				} else {
 					return false;
+				}
+	 // NINO...
+				if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
+					$newSubContractor['NINO'] = $subContractorDetails['nino'];
 				}
 	 // Total payments made...
 				if (isset($subContractorDetails['totalpayments']) && is_numeric($subContractorDetails['totalpayments']) && ($subContractorDetails['totalpayments'] >= 0) && ($subContractorDetails['totalpayments'] <= 99999999)) {
@@ -311,26 +340,28 @@ public function test() { return $this->_subContractorList; }
 				} else {
 					return false;
 				}
-			}
 
 	 // Subcontractor verifcation number...
-			if (isset($subContractorDetails['verifcation'])) {
-				$subContractorDetails['verifcation'] = strtoupper($subContractorDetails['verifcation']);
-				if (preg_match('/V[0-9]{10}[A-HJ-NP-Z]{0,2}/', $subContractorDetails['verifcation'])) {
-					$newSubContractor['VerificationNumber'] = $subContractorDetails['verifcation'];
+				if (isset($subContractorDetails['verifcation'])) {
+					$subContractorDetails['verifcation'] = strtoupper($subContractorDetails['verifcation']);
+					if (preg_match('/V[0-9]{10}[A-HJ-NP-Z]{0,2}/', $subContractorDetails['verifcation'])) {
+						$newSubContractor['VerificationNumber'] = $subContractorDetails['verifcation'];
+					}
 				}
-			}
 		
 	 // Works reference...
-			if (isset($subContractorDetails['worksref'])) {
-				if (strlen($subContractorDetails['worksref']) < 21) {
-					$newSubContractor['WorksRef'] = $subContractorDetails['worksref'];
+				if (isset($subContractorDetails['worksref'])) {
+					if (strlen($subContractorDetails['worksref']) < 21) {
+						$newSubContractor['WorksRef'] = $subContractorDetails['worksref'];
+					}
 				}
-			}
 
-			$this->_subContractorList[] = $newSubContractor;
-			return (count($this->_subContractorList) - 1);
-		
+				$this->_subContractorList[] = $newSubContractor;
+				return (count($this->_subContractorList) - 1);
+
+			} else {
+				return false;
+			}
 		} else {
 			return false;
 		}
@@ -354,6 +385,156 @@ public function test() { return $this->_subContractorList; }
 			return false;
 		}
 	
+	}
+	
+	/**
+	 * Packages and sends a CIS300 monthly return using information set
+	 * through previous calls to addSubContractor() and other methods in this
+	 * class.
+	 *
+	 * @param string $returnPeriod The end date for this return (must be in the format YYYY-mm-05).
+	 * @param string $contractorUtr Contractor's UTR.
+	 * @param string $contractorAoRef Contractor's Accounts Office Reference Number.
+	 * @param string $senderCapacity The capacity this return is being submitted under (Agent, Trust, Company, etc.).
+	 */
+	public function monthlyReturnRequest($returnPeriod, $contractorUtr, $contractorAoRef, $senderCapacity, $inactivity = false, $informationCorrect = true) {
+	
+		if ($informationCorrect === true) {
+			if (isset($this->_taxOfficeNumber) && isset($this->_taxOfficeReference)) {
+
+				if (preg_match('/^\d{4}-\d{2}-05$/', $returnPeriod)) { # Return period
+					if ((is_numeric($contractorUtr) && (strlen($contractorUtr) == 10)) && preg_match('/[0-9]{3}P[A-Za-z][A-Za-z0-9]{8}/', $contractorAoRef)) { # UTR and AORef
+						$validCapacities = array('Individual', 'Company', 'Agent',
+						                         'Bureau', 'Partnership', 'Trust',
+						                         'Government', 'Other');
+						if (in_array($senderCapacity, $validCapacities)) {
+	
+	 // Set the message envelope bits and pieces for this request...
+							$this->setMessageClass('IR-CIS-CIS300MR');
+							$this->setMessageQualifier('request');
+							$this->setMessageFunction('submit');
+							$this->addTargetOrganisation('IR');
+		
+	 // Build message body...
+							$package = new XMLWriter();
+							$package->openMemory();
+							$package->setIndent(true);
+							$package->startElement('IRenvelope');
+								$package->writeAttribute('xmlns', 'http://www.govtalk.gov.uk/taxation/CISreturn');
+								$package->startElement('IRheader');
+									$package->startElement('Keys');
+										$package->startElement('Key');
+											$package->writeAttribute('Type', 'TaxOfficeNumber');
+											$package->text($this->_taxOfficeNumber);
+										$package->endElement(); # Key
+										$package->startElement('Key');
+											$package->writeAttribute('Type', 'TaxOfficeReference');
+											$package->text($this->_taxOfficeReference);
+										$package->endElement(); # Key
+									$package->endElement(); # Keys
+									$package->writeElement('PeriodEnd', $returnPeriod);
+									if (count($this->_agentDetails) > 0) {
+										$package->startElement('Agent');
+											if (isset($this->_agentDetails['reference'])) {
+												$package->writeElement('AgentID', $this->_agentDetails['reference']);
+											}
+											$package->writeElement('Company', $this->_agentDetails['company']);
+											$package->startElement('Address');
+												foreach ($this->_agentDetails['address']['line'] AS $line) {
+													$package->writeElement('Line', $line);
+												}
+												$package->writeElement('PostCode', $this->_agentDetails['address']['postcode']);
+												$package->writeElement('Country', $this->_agentDetails['address']['country']);
+											$package->endElement(); # Address
+											if (isset($this->_agentDetails['contact'])) {
+												$package->startElement('Contact');
+													$package->startElement('Name');
+														$package->writeElement('Ttl', $this->_agentDetails['contact']['name']['title']);
+														$package->writeElement('Fore', $this->_agentDetails['contact']['name']['forename']);
+														$package->writeElement('Sur', $this->_agentDetails['contact']['name']['surname']);
+													$package->endElement(); # Name
+													if (isset($this->_agentDetails['contact']['email'])) {
+														$package->writeElement('Email', $this->_agentDetails['contact']['email']);
+													}
+													if (isset($this->_agentDetails['contact']['telephone'])) {
+														$package->writeElement('Telephone', $this->_agentDetails['contact']['telephone']);
+													}
+													if (isset($this->_agentDetails['contact']['fax'])) {
+														$package->writeElement('Fax', $this->_agentDetails['contact']['fax']);
+													}
+												$package->endElement(); # Contact
+											}
+										$package->endElement(); # Agent
+									}
+									$package->writeElement('DefaultCurrency', 'GBP');
+									if ($this->_generateIRmark === true) {
+										$package->startElement('IRmark');
+											$package->writeAttribute('Type', 'generic');
+											$package->text('IRmark+Token');
+										$package->endElement(); # IRmark
+									}
+									$package->writeElement('Sender', $senderCapacity);
+								$package->endElement(); # IRheader
+								$package->startElement('CISreturn');
+									$package->startElement('Contractor');
+										$package->writeElement('UTR', $contractorUtr);
+										$package->writeElement('AOref', $contractorAoRef);
+									$package->endElement(); # Contractor
+									if ($this->_nilReturn === true) {
+										$package->writeElement('NilReturn', 'yes');
+									} else {
+										foreach ($this->_subContractorList AS $subContractor) {
+											$package->startElement('Subcontractor');
+												$package->writeRaw("\n".trim($this->_xmlPackageArray($subContractor)->outputMemory())."\n"); # Subcontractor
+											$package->endElement(); # Subcontractor
+										}
+									}
+									$package->startElement('Declarations');
+										if ($this->_nilReturn !== true) {
+											if ($this->_employmentStatusFlag === true) {
+												$package->writeElement('EmploymentStatus', 'yes');
+											} else {
+												$package->writeElement('EmploymentStatus', 'no');
+											}
+											if ($this->_verifcationFlag === true) {
+												$package->writeElement('Verification', 'yes');
+											} else {
+												$package->writeElement('Verification', 'no');
+											}
+										}
+										$package->writeElement('InformationCorrect', 'yes');
+										if ($inactivity === true) {
+											$package->writeElement('Inactivity', 'yes');
+										}
+									$package->endElement(); # Declarations
+								$package->endElement(); # CISreturn
+							$package->endElement(); # IRenvelope
+
+	 // Send the message and deal with the response...
+							$this->setMessageBody($package);
+return $this->_packageGovTalkEnvelope();
+							if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+								return $returnable;
+							} else {
+								return false;
+							}
+
+						} else {
+							return false;
+						}
+					} else {
+						return false;
+					}
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+
 	}
 
  /* Protected methods. */
@@ -385,7 +566,7 @@ public function test() { return $this->_subContractorList; }
 	}
 
  /* Private methods. */
-
+ 
 	/**
 	 * Generates an IRmark hash from the given XML string for use in the IRmark
 	 * node inside the message body.  The string passed must contain one IRmark
