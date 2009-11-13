@@ -303,25 +303,27 @@ class HmrcCis extends GovTalk {
 				} else {
 					return false;
 				}
+				
+	 // NINO...
+				if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
+					$newSubContractor['NINO'] = $subContractorDetails['nino'];
+				}
 
-	 // Unmatched rate, also controls other requirements...
+	 // Unmatched rate...
 				if (isset($subContractorDetails['higherrate'])) {
 					if ($subContractorDetails['higherrate'] === true) {
 						$newSubContractor['UnmatchedRate'] = 'yes';
 					}
 				}
-				if (!isset($newSubContractor['UnmatchedRate'])) { }
-				
 	 // UTR...
 				if (isset($subContractorDetails['utr']) && preg_match('/[0-9]{10}/', $subContractorDetails['utr'])) {
 					$newSubContractor['UTR'] = $subContractorDetails['utr'];
 				} else {
-					return false;
+					if (!isset($newSubContractor['UnmatchedRate'])) {
+						return false;
+					}
 				}
-	 // NINO...
-				if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
-					$newSubContractor['NINO'] = $subContractorDetails['nino'];
-				}
+				
 	 // Total payments made...
 				if (isset($subContractorDetails['totalpayments']) && is_numeric($subContractorDetails['totalpayments']) && ($subContractorDetails['totalpayments'] >= 0) && ($subContractorDetails['totalpayments'] <= 99999999)) {
 					$newSubContractor['TotalPayments'] = sprintf('%.2f', round($subContractorDetails['totalpayments']));
