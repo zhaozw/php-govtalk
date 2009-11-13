@@ -376,6 +376,8 @@ class HmrcVat extends GovTalk {
 						$paymentDetails['payment'] = array('method' => 'payment', 'additional' => (string) $paymentNotifcation->PaymentRequest->DirectDebitInstructionStatus);
 					}
 					
+					$this->sendDeleteRequest();
+					
 					return array('message' => $responseMessage,
 					             'irmark' => $irMarkReceipt,
 					             'accept_time' => $responseAcceptedTime,
