@@ -292,10 +292,6 @@ class HmrcCis extends GovTalk {
 						$companyNameLength = strlen($subContractorDetails['name']);
 						if (($companyNameLength < 57) && preg_match('/\S.*/', $subContractorDetails['name'])) {
 							$newSubContractor['TradingName'] = $subContractorDetails['name'];
-	 // CRN...
-							if (isset($subContractorDetails['crn']) && preg_match('/[A-Za-z]{2}[0-9]{1,6}|[0-9]{1,8}/', $subContractorDetails['crn'])) {
-								$newSubContractor['CRN'] = $subContractorDetails['crn'];
-							}
 						} else {
 							return false;
 						}
@@ -304,9 +300,11 @@ class HmrcCis extends GovTalk {
 					return false;
 				}
 				
-	 // NINO...
-				if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
-					$newSubContractor['NINO'] = $subContractorDetails['nino'];
+	 // Works reference...
+				if (isset($subContractorDetails['worksref'])) {
+					if (strlen($subContractorDetails['worksref']) < 21) {
+						$newSubContractor['WorksRef'] = $subContractorDetails['worksref'];
+					}
 				}
 
 	 // Unmatched rate...
@@ -315,12 +313,28 @@ class HmrcCis extends GovTalk {
 						$newSubContractor['UnmatchedRate'] = 'yes';
 					}
 				}
+
 	 // UTR...
 				if (isset($subContractorDetails['utr']) && preg_match('/[0-9]{10}/', $subContractorDetails['utr'])) {
 					$newSubContractor['UTR'] = $subContractorDetails['utr'];
 				} else {
 					if (!isset($newSubContractor['UnmatchedRate'])) {
 						return false;
+					}
+				}
+	 // CRN...
+				if (isset($subContractorDetails['crn']) && preg_match('/[A-Za-z]{2}[0-9]{1,6}|[0-9]{1,8}/', $subContractorDetails['crn'])) {
+					$newSubContractor['CRN'] = $subContractorDetails['crn'];
+				}
+	 // NINO...
+				if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
+					$newSubContractor['NINO'] = $subContractorDetails['nino'];
+				}
+	 // Subcontractor verifcation number...
+				if (isset($subContractorDetails['verifcation'])) {
+					$subContractorDetails['verifcation'] = strtoupper($subContractorDetails['verifcation']);
+					if (preg_match('/V[0-9]{10}[A-HJ-NP-Z]{0,2}/', $subContractorDetails['verifcation'])) {
+						$newSubContractor['VerificationNumber'] = $subContractorDetails['verifcation'];
 					}
 				}
 				
@@ -341,21 +355,6 @@ class HmrcCis extends GovTalk {
 					$newSubContractor['TotalDeducted'] = sprintf('%.2f', $subContractorDetails['totaldeducted']);
 				} else {
 					return false;
-				}
-
-	 // Subcontractor verifcation number...
-				if (isset($subContractorDetails['verifcation'])) {
-					$subContractorDetails['verifcation'] = strtoupper($subContractorDetails['verifcation']);
-					if (preg_match('/V[0-9]{10}[A-HJ-NP-Z]{0,2}/', $subContractorDetails['verifcation'])) {
-						$newSubContractor['VerificationNumber'] = $subContractorDetails['verifcation'];
-					}
-				}
-		
-	 // Works reference...
-				if (isset($subContractorDetails['worksref'])) {
-					if (strlen($subContractorDetails['worksref']) < 21) {
-						$newSubContractor['WorksRef'] = $subContractorDetails['worksref'];
-					}
 				}
 
 				$this->_subContractorList[] = $newSubContractor;
@@ -514,8 +513,9 @@ class HmrcCis extends GovTalk {
 
 	 // Send the message and deal with the response...
 							$this->setMessageBody($package);
-return $this->_packageGovTalkEnvelope();
 							if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+								$returnable = $this->getResponseEndpoint();
+								$returnable['correlationid'] = $this->getResponseCorrelationId();
 								return $returnable;
 							} else {
 								return false;
@@ -527,6 +527,84 @@ return $this->_packageGovTalkEnvelope();
 					} else {
 						return false;
 					}
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+
+	}
+	
+	/**
+	 * Polls the Gateway for a submission response / error following a CIS300
+	 * montly return request. By default the correlation ID from the last
+	 * response is used for the polling, but this can be over-ridden by supplying
+	 * a correlation ID. The correlation ID can be skipped by passing a null
+	 * value.
+	 *
+	 * If the resource is still pending this method will return the same array
+	 * as monthlyReturnRequest() -- 'endpoint', 'interval' and 'correlationid' --
+	 * if not then it'll return lots of useful information relating to the return
+	 * in the following array format:
+	 *
+	 *  message => an array of messages ('Thank you for your submission', etc.).
+	 *  irmark => the message from the IRMark reciept.
+	 *  accept_time => the time the submission was accepted by the HMRC server.
+	 *
+	 * @param string $correlationId The correlation ID of the resource to poll. Can be skipped with a null value.
+	 * @param string $pollUrl The URL of the Gateway to poll.
+	 * @return mixed An array of details relating to the return and payment, or false on failure.
+	 */
+	public function monthlyReturnResponsePoll($correlationId = null, $pollUrl = null) {
+
+		if ($correlationId === null) {
+			$correlationId = $this->getResponseCorrelationId();
+		}
+
+		if ($this->setMessageCorrelationId($correlationId)) {
+			if ($pollUrl !== null) {
+				$this->setGovTalkServer($pollUrl);
+			}
+			$this->setMessageClass('IR-CIS-CIS300MR');
+			$this->setMessageQualifier('poll');
+			$this->setMessageFunction('submit');
+			$this->addTargetOrganisation('IR');
+			$this->resetMessageKeys();
+			$this->setMessageBody('');
+			
+			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
+
+				$messageQualifier = (string) $this->_fullResponseObject->Header->MessageDetails->Qualifier;
+				if ($messageQualifier == 'response') {
+
+					$successResponse = $this->_fullResponseObject->Body->SuccessResponse;
+
+					if (isset($successResponse->IRmarkReceipt)) {
+						$irMarkReceipt = (string) $successResponse->IRmarkReceipt->Message;
+					} else {
+						$irMarkReceipt = null;
+					}
+
+					$responseMessage = array();
+					foreach ($successResponse->Message AS $message) {
+						$responseMessage[] = (string) $message;
+					}
+					$responseAcceptedTime = strtotime($successResponse->AcceptedTime);
+					
+					$this->sendDeleteRequest();
+
+					return array('message' => $responseMessage,
+					             'irmark' => $irMarkReceipt,
+					             'accept_time' => $responseAcceptedTime);
+
+				} else if ($messageQualifier == 'acknowledgement') {
+					$returnable = $this->getResponseEndpoint();
+					$returnable['correlationid'] = $this->getResponseCorrelationId();
+					return $returnable;
 				} else {
 					return false;
 				}
