@@ -46,7 +46,7 @@ class HmrcCis extends GovTalk {
 	 *
 	 * @var array
 	 */
-	private $_subContractorList = array();
+	private $_returnSubContractorList = array();
 	
 	/**
 	 * Flag indicating if all subcontractors' status has been checked.
@@ -215,7 +215,7 @@ class HmrcCis extends GovTalk {
 	 */
 	public function setNilReturn() {
 	
-		if (count($this->_subContractorList) == 0) {
+		if (count($this->_returnSubContractorList) == 0) {
 			$this->_nilReturn = true;
 			return true;
 		} else {
@@ -249,7 +249,7 @@ class HmrcCis extends GovTalk {
 	 * @param boolean $verified Flag indicating if this contractor "has either been verified with HM Revenue & Customs, or has been included in previous CIS return in this, or the previous two tax years".
 	 * @return mixed The ID of the subcontrator added (base 0), or false if the subcontractor could not be added.
 	 **/
-	public function addSubContractor(array $subContractorDetails, $employmentStatus, $verified) {
+	public function addReturnSubContractor(array $subContractorDetails, $employmentStatus, $verified) {
 	
 		if ($this->_nilReturn === false) {
 		
@@ -357,8 +357,8 @@ class HmrcCis extends GovTalk {
 					return false;
 				}
 
-				$this->_subContractorList[] = $newSubContractor;
-				return (count($this->_subContractorList) - 1);
+				$this->_returnSubContractorList[] = $newSubContractor;
+				return (count($this->_returnSubContractorList) - 1);
 
 			} else {
 				return false;
@@ -373,11 +373,11 @@ class HmrcCis extends GovTalk {
 	 * Removes a subcontractor from the list of subcontractors which will be used
 	 * to build this return.
 	 */
-	public function deleteSubContractor($subContractorId) {
+	public function deleteReturnSubContractor($subContractorId) {
 	
 		if (is_int($subContractorId)) {
-			if (isset($this->_subContractorList[$subContractorId])) {
-				unset($this->_subContractorList[$subContractorId]);
+			if (isset($this->_returnSubContractorList[$subContractorId])) {
+				unset($this->_returnSubContractorList[$subContractorId]);
 				return true;
 			} else {
 				return false;
@@ -484,7 +484,7 @@ class HmrcCis extends GovTalk {
 									if ($this->_nilReturn === true) {
 										$package->writeElement('NilReturn', 'yes');
 									} else {
-										foreach ($this->_subContractorList AS $subContractor) {
+										foreach ($this->_returnSubContractorList AS $subContractor) {
 											$package->startElement('Subcontractor');
 												$package->writeRaw("\n".trim($this->_xmlPackageArray($subContractor)->outputMemory())."\n"); # Subcontractor
 											$package->endElement(); # Subcontractor
