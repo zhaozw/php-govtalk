@@ -30,6 +30,15 @@
  */
 class CompaniesHouse extends GovTalk {
 
+ /* System / internal variables. */
+
+	/**
+	 * Version of the extension, for use in channel routing.
+	 *
+	 * @var string
+	 */
+	private $_extensionVersion = '0.2.1';
+
  /* Magic methods. */
 
 	/**
@@ -47,8 +56,6 @@ class CompaniesHouse extends GovTalk {
 		$this->setSchemaValidation(false);
 		$this->setMessageAuthentication('alternative');
 		$this->setMessageQualifier('request');
-		
-		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', '0.1');
 
 	}
 
@@ -83,6 +90,7 @@ class CompaniesHouse extends GovTalk {
 					$package->endElement();
 
 					$this->setMessageBody($package);
+					$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', $this->_extensionVersion);
 					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 						return $this->_parseCompanySearchResult($this->getResponseBody()->NameSearch);
 					} else {
@@ -127,6 +135,7 @@ class CompaniesHouse extends GovTalk {
 					$package->endElement();
 
 					$this->setMessageBody($package);
+					$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', $this->_extensionVersion);
 					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 						return $this->_parseCompanySearchResult($this->getResponseBody()->NumberSearch);
 					} else {
@@ -195,6 +204,7 @@ class CompaniesHouse extends GovTalk {
 					$package->endElement();
 					
 					$this->setMessageBody($package);
+					$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', $this->_extensionVersion);
 					if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 						$nearestOfficer = $possibleOfficers = array();
 						$officerSearchBody = $this->getResponseBody()->OfficerSearch;
@@ -256,6 +266,7 @@ class CompaniesHouse extends GovTalk {
 			$package->endElement();
 			
 			$this->setMessageBody($package);
+			$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', $this->_extensionVersion);
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 
 	 // Basic details...
@@ -366,6 +377,7 @@ class CompaniesHouse extends GovTalk {
 			$package->endElement();
 			
 			$this->setMessageBody($package);
+			$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', $this->_extensionVersion);
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 				$officerDetailsBody = $this->getResponseBody()->OfficerDetails;
 				
@@ -463,6 +475,7 @@ class CompaniesHouse extends GovTalk {
 			$package->endElement();
 			
 			$this->setMessageBody($package);
+			$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', $this->_extensionVersion);
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 
 				$filingHistoryBody = $this->getResponseBody()->FilingHistory;
@@ -523,6 +536,7 @@ class CompaniesHouse extends GovTalk {
 			$package->endElement();
 			
 			$this->setMessageBody($package);
+			$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', $this->_extensionVersion);
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 			
 				$documentInfoBody = $this->getResponseBody()->DocumentInfo;
@@ -571,6 +585,7 @@ class CompaniesHouse extends GovTalk {
 			$package->endElement();
 			
 			$this->setMessageBody($package);
+			$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/companieshouse/', 'php-govtalk Companies House Extension', $this->_extensionVersion);
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 				return $this->getResponseEndpoint();
 			}
