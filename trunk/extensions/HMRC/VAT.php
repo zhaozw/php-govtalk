@@ -79,7 +79,6 @@ class HmrcVat extends GovTalk {
 		$this->setSchemaLocation('http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/2/VATDeclarationRequest-v2-1.xsd', false);
 
 		$this->setMessageAuthentication('clear');
-		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC VAT extension', '0.1');
 
 	}
 
@@ -265,6 +264,7 @@ class HmrcVat extends GovTalk {
 						
 	 // Send the message and deal with the response...
 						$this->setMessageBody($package);
+						$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC VAT extension', '0.1.1');
 						if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 							$returnable = $this->getResponseEndpoint();
 							$returnable['correlationid'] = $this->getResponseCorrelationId();
