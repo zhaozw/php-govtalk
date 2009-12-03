@@ -59,7 +59,6 @@ class HmrcVat1 extends GovTalk {
 		}
 
 		$this->setMessageAuthentication('clear');
-		$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC VAT1 extension', '0.1');
 
 	}
 
@@ -84,7 +83,7 @@ class HmrcVat1 extends GovTalk {
 	 * @return mixed An array of 'endpoint', 'interval' and 'correlationid' on success, or false on failure.
 	 */
 	public function declarationRequest($vatNumber, $returnPeriod, $vatOutput, $vatECAcq, $vatReclaimedInput, $netOutput, $netInput, $netECSupply, $netECAcq, $totalVat = null, $netVat = null) {
-
+	
 		$vatNumber = trim(str_replace(' ', '', $vatNumber));
 		if (preg_match('/^(GB)?(\d{9,12})$/', $vatNumber)) { # VAT number
 			$this->addMessageKey('VATRegNo', $vatNumber);
@@ -135,6 +134,7 @@ class HmrcVat1 extends GovTalk {
 
 	 // Send the message and deal with the response...
 						$this->setMessageBody($package);
+						$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC VAT1 extension', '0.1.1');
 						if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 							$returnable = $this->getResponseEndpoint();
 							$returnable['correlationid'] = $this->getResponseCorrelationId();
@@ -264,7 +264,7 @@ class HmrcVat1 extends GovTalk {
 		}
 
 	}
-
+	
  /* Protected methods. */
 
  /* Private methods. */
