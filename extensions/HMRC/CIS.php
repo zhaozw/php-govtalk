@@ -30,7 +30,10 @@
  */
 class HmrcCis extends GovTalk {
 
-public function test() { var_dump($this->_verifySubContractorList); }
+ /* Extension specific information. */
+	private $_extensionDetails = array('name' => 'php-govtalk HMRC CIS extension',
+	                                   'version' => '0.1',
+	                                   'url' => 'http://blogs.fubra.com/php-govtalk/extensions/hmrc/cis/');
 
  /* General IRenvelope related variables. */
 
@@ -521,7 +524,7 @@ public function test() { var_dump($this->_verifySubContractorList); }
 
 	 // Send the message and deal with the response...
 							$this->setMessageBody($package);
-							$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC CIS extension', '0.1');
+							$this->addChannelRoute($this->_extensionDetails['url'], $this->_extensionDetails['name'], $this->_extensionDetails['version']);
 							if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 								$returnable = $this->getResponseEndpoint();
 								$returnable['correlationid'] = $this->getResponseCorrelationId();
@@ -768,6 +771,19 @@ public function test() { var_dump($this->_verifySubContractorList); }
 	}
 	
 	/**
+	 * Resets the subcontractor list, removing all previously specified
+	 * subcontractor information.
+	 *
+	 * @return boolean This method always returns true.
+	 */
+	public function resetVerifcationSubcontractors() {
+
+		$this->_verifySubContractorList = array();
+		return true;
+
+	}
+	
+	/**
 	 * Packages and sends a verifcation request to HMRC for all subcontractors
 	 * added via addVerifcationSubContractor() calls.
 	 *
@@ -868,7 +884,7 @@ public function test() { var_dump($this->_verifySubContractorList); }
 							
 	 // Send the message and deal with the response...
 							$this->setMessageBody($package);
-							$this->addChannelRoute('http://blogs.fubra.com/php-govtalk/extensions/hmrc/vat/', 'php-govtalk HMRC CIS extension', '0.1');
+							$this->addChannelRoute($this->_extensionDetails['url'], $this->_extensionDetails['name'], $this->_extensionDetails['version']);
 							if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
 								$returnable = $this->getResponseEndpoint();
 								$returnable['correlationid'] = $this->getResponseCorrelationId();
@@ -990,19 +1006,6 @@ public function test() { var_dump($this->_verifySubContractorList); }
 			return false;
 		}
 
-	}
-	
-	/**
-	 * Resets the subcontractor list, removing all previously specified
-	 * subcontractor information.
-	 *
-	 * @return boolean This method always returns true.
-	 */
-	public function resetVerifcationSubcontractors() {
-	
-		$this->_verifySubContractorList = array();
-		return true;
-	
 	}
 
  /* Protected methods. */
