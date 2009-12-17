@@ -400,6 +400,19 @@ class HmrcCis extends GovTalk {
 	}
 	
 	/**
+	 * Resets the return subcontractor list, removing all previously specified
+	 * subcontractor information.
+	 *
+	 * @return boolean This method always returns true.
+	 */
+	public function resetReturnSubContractors() {
+
+		$this->_returnSubContractorList = array();
+		return true;
+
+	}
+	
+	/**
 	 * Packages and sends a CIS300 monthly return using information set
 	 * through previous calls to addSubContractor() and other methods in this
 	 * class.
@@ -771,8 +784,27 @@ class HmrcCis extends GovTalk {
 	}
 	
 	/**
-	 * Resets the subcontractor list, removing all previously specified
-	 * subcontractor information.
+	 * Removes a subcontractor from the list of subcontractors which will be used
+	 * to build the next subcontractor verifcation request.
+	 */
+	public function deleteVerifcationSubcontractor($subContractorId) {
+
+		if (is_int($subContractorId)) {
+			if (isset($this->_verifySubContractorList[$subContractorId])) {
+				unset($this->_verifySubContractorList[$subContractorId]);
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+
+	}
+	
+	/**
+	 * Resets the verifcation subcontractor list, removing all previously
+	 * specified subcontractor information.
 	 *
 	 * @return boolean This method always returns true.
 	 */
