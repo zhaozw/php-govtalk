@@ -663,7 +663,7 @@ class HmrcCis extends GovTalk {
 	 *    forename => An array of the contractor's forename(s). Maximum of 2 forenames.
 	 *    surname => Contractor's surname.
 	 *  worksref => An optional reference.  Not used by HMRC. (Optional.)
-	 *  utr => The subcontractor's UTR. This must be set if the higherrate flag is not set true.
+	 *  utr => The subcontractor's UTR. This must be set tradertype is 'soletrader', 'trust' or 'company', and the requested action is 'match'.
 	 *  crn => The subcontractor's Company Registration Number, if a company and known.
 	 *  nino => The subcontractor's National Insurance Number, if an individual and known.
 	 *
@@ -752,9 +752,9 @@ class HmrcCis extends GovTalk {
 						if (isset($subContractorDetails['utr']) && preg_match('/[0-9]{10}/', $subContractorDetails['utr'])) {
 							$newSubContractor['UTR'] = $subContractorDetails['utr'];
 						} else {
-							if (!isset($newSubContractor['UnmatchedRate'])) {
-								return false;
-							}
+						   if ((($subContractorDetails['tradertype'] == 'soletrader') || ($subContractorDetails['tradertype'] == 'trust') || ($subContractorDetails['tradertype'] == 'company')) && ($action == 'match')) {
+							   return false;
+						   }
 						}
 	 // CRN...
 						if (isset($subContractorDetails['crn']) && preg_match('/[A-Za-z]{2}[0-9]{1,6}|[0-9]{1,8}/', $subContractorDetails['crn'])) {
