@@ -381,8 +381,23 @@ class HmrcCis extends GovTalk {
 	}
 	
 	/**
+	 * Counts the number of subcontractors added to the return subcontractor
+	 * array.
+	 *
+	 * @return int The number of subcontractors in the return subcontrator array.
+	 */
+	public function countReturnSubContractors() {
+	
+		return count($this->_returnSubContractorList);
+	
+	}
+	
+	/**
 	 * Removes a subcontractor from the list of subcontractors which will be used
 	 * to build this return.
+	 *
+	 * @param int $subContractorId The ID of the subcontractor to remove.
+	 * @return boolean True if the subcontractor is found and removed from the list.
 	 */
 	public function deleteReturnSubContractor($subContractorId) {
 	
@@ -784,8 +799,23 @@ class HmrcCis extends GovTalk {
 	}
 	
 	/**
+	 * Counts the number of subcontractors in the verifcation subcontractor
+	 * array.
+	 *
+	 * @return int The number of subcontractors in the verifcation subcontrator array.
+	 */
+	public function countVerifcationSubContractors() {
+
+		return count($this->_verifySubContractorList);
+
+	}
+	
+	/**
 	 * Removes a subcontractor from the list of subcontractors which will be used
 	 * to build the next subcontractor verifcation request.
+	 *
+	 * @param int $subContractorId The ID of the subcontractor to be removed.
+	 * @return boolean True if the subcontractor was found and removed from the list.
 	 */
 	public function deleteVerifcationSubcontractor($subContractorId) {
 
