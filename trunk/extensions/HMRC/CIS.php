@@ -679,8 +679,9 @@ class HmrcCis extends GovTalk {
 	 *    surname => Contractor's surname.
 	 *  address => The subcontractor's address, in the following format:
 	 *    line => Array, each element containing a single line information.
-	 *    postcode => The agent company's postcode.
-	 *    country => The agent company's country. Defaults to England.
+	 *    postcode => The subcontractor's postcode.
+	 *    country => The subcontractor's country. Defaults to England.
+	 *  telephone => The subcontractor's telephone number.
 	 *  worksref => An optional reference.  Not used by HMRC. (Optional.)
 	 *  utr => The subcontractor's UTR. This must be set tradertype is 'soletrader', 'trust' or 'company', and the requested action is 'match'.
 	 *  crn => The subcontractor's Company Registration Number, if a company and known.
@@ -779,6 +780,12 @@ class HmrcCis extends GovTalk {
 							} else {
 								return false;
 							}
+						}
+	 // Telephone number...
+						if (isset($subContractorDetails['telephone']) && preg_match('[0-9\(\)\-\s]{1,35}', $subContractorDetails['telephone'])) {
+							$newSubContractor['Telephone'] = $subContractorDetails['telephone'];
+						} else {
+							return false;
 						}
 					
 	 // Works reference...
