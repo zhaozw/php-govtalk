@@ -677,6 +677,10 @@ class HmrcCis extends GovTalk {
 	 *    title => Contractor's title (Mr, Mrs, etc.)
 	 *    forename => An array of the contractor's forename(s). Maximum of 2 forenames.
 	 *    surname => Contractor's surname.
+	 *  address => The subcontractor's address, in the following format:
+	 *    line => Array, each element containing a single line information.
+	 *    postcode => The agent company's postcode.
+	 *    country => The agent company's country. Defaults to England.
 	 *  worksref => An optional reference.  Not used by HMRC. (Optional.)
 	 *  utr => The subcontractor's UTR. This must be set tradertype is 'soletrader', 'trust' or 'company', and the requested action is 'match'.
 	 *  crn => The subcontractor's Company Registration Number, if a company and known.
@@ -755,6 +759,26 @@ class HmrcCis extends GovTalk {
 							}
 						} else {
 							return false;
+						}
+						
+	 // Contractor address...
+						if (isset($subContractorDetails['address'])) {
+							if (count($subContractorDetails['address']['line']) < 5) {
+								$newSubContractor['Address'] = array();
+								foreach ($subContractorDetails['address']['line'] AS $addressLine) {
+									if (strlen($addressLine) <= 35) {
+										$newSubContractor['Address']['Line'][] = $addressLine;
+									}
+								}
+								if (isset($subContractorDetails['address']['postocde'])) {
+									$newSubContractor['Address']['PostCode'] = $subContractorDetails['address']['postocde'];
+								}
+								if (isset($subContractorDetails['address']['country'])) {
+									$newSubContractor['Address']['Country'] = $subContractorDetails['address']['country'];
+								}
+							} else {
+								return false;
+							}
 						}
 					
 	 // Works reference...
