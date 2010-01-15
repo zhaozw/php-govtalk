@@ -670,15 +670,15 @@ class HmrcCis extends GovTalk {
 	 *
 	 * The subcontractor's details should be specified in an array as follows:
 	 *  tradertype => The type of trader -- soletrader, partnership, trust or company -- this subcontractor is.
-	 *  partnership => Array, must be completed if tradertype is set to 'partnership':
-	 *    utr => Partnership UTR.
-	 *    name => Partnership name.
 	 *  name => Array or string. If this element is a string it is assumed this is a company trading name, if it's an array it is assumed to be an individual's name and must be in the following format:
 	 *    title => Contractor's title (Mr, Mrs, etc.)
 	 *    forename => An array of the contractor's forename(s). Maximum of 2 forenames.
 	 *    surname => Contractor's surname.
+	 *  partnership => Array, must be completed if tradertype is set to 'partnership':
+	 *    utr => Partnership UTR.
+	 *    name => Partnership name.
 	 *  address => The subcontractor's address, in the following format:
-	 *    line => Array, each element containing a single line information.
+	 *    line => Array, each element containing a single line information. Maximum of 4 lines.
 	 *    postcode => The subcontractor's postcode.
 	 *    country => The subcontractor's country. Defaults to England.
 	 *  telephone => The subcontractor's telephone number.
@@ -704,16 +704,6 @@ class HmrcCis extends GovTalk {
 					if (isset($subContractorDetails['tradertype'])) {
 						switch ($subContractorDetails['tradertype']) {
 							case 'partnership':
-								if ($action == 'match') {
-									if (preg_match('/[0-9]{10}/', $subContractorDetails['partnership']['utr']) && preg_match('/\S.*/', $subContractorDetails['partnership']['name'])) {
-										$newSubContractor['Partnership']['UTR'] = $subContractorDetails['partnership']['utr'];
-										$newSubContractor['Partnership']['Name'] = $subContractorDetails['partnership']['name'];
-									} else {
-										return false;
-									}
-								} else {
-									return false;
-								}
 							case 'soletrader':
 							case 'trust':
 							case 'company':
@@ -762,32 +752,6 @@ class HmrcCis extends GovTalk {
 							return false;
 						}
 						
-	 // Contractor address...
-						if (isset($subContractorDetails['address'])) {
-							if (count($subContractorDetails['address']['line']) < 5) {
-								$newSubContractor['Address'] = array();
-								foreach ($subContractorDetails['address']['line'] AS $addressLine) {
-									if (strlen($addressLine) <= 35) {
-										$newSubContractor['Address']['Line'][] = $addressLine;
-									}
-								}
-								if (isset($subContractorDetails['address']['postocde'])) {
-									$newSubContractor['Address']['PostCode'] = $subContractorDetails['address']['postocde'];
-								}
-								if (isset($subContractorDetails['address']['country'])) {
-									$newSubContractor['Address']['Country'] = $subContractorDetails['address']['country'];
-								}
-							} else {
-								return false;
-							}
-						}
-	 // Telephone number...
-						if (isset($subContractorDetails['telephone']) && preg_match('[0-9\(\)\-\s]{1,35}', $subContractorDetails['telephone'])) {
-							$newSubContractor['Telephone'] = $subContractorDetails['telephone'];
-						} else {
-							return false;
-						}
-					
 	 // Works reference...
 						if (isset($subContractorDetails['worksref'])) {
 							if (strlen($subContractorDetails['worksref']) < 21) {
@@ -809,6 +773,44 @@ class HmrcCis extends GovTalk {
 	 // NINO...
 						if (isset($subContractorDetails['nino']) && preg_match('/[ABCEGHJKLMNOPRSTWXYZ][ABCEGHJKLMNPRSTWXYZ][0-9]{6}[A-D ]/', $subContractorDetails['nino'])) {
 							$newSubContractor['NINO'] = $subContractorDetails['nino'];
+						}
+						
+	 // Partnership...
+						if ($subContractorDetails['tradertype'] == 'partnership') {
+							if ($action == 'match') {
+								if (preg_match('/[0-9]{10}/', $subContractorDetails['partnership']['utr']) && preg_match('/\S.*/', $subContractorDetails['partnership']['name'])) {
+									$newSubContractor['Partnership']['Name'] = $subContractorDetails['partnership']['name'];
+									$newSubContractor['Partnership']['UTR'] = $subContractorDetails['partnership']['utr'];
+								} else {
+									return false;
+								}
+							} else {
+								return false;
+							}
+						}
+						
+	 // Contractor address...
+						if (isset($subContractorDetails['address'])) {
+							if (count($subContractorDetails['address']['line']) < 5) {
+								$newSubContractor['Address'] = array();
+								foreach ($subContractorDetails['address']['line'] AS $addressLine) {
+									if (strlen($addressLine) <= 35) {
+										$newSubContractor['Address']['Line'][] = $addressLine;
+									}
+								}
+								if (isset($subContractorDetails['address']['postocde'])) {
+									$newSubContractor['Address']['PostCode'] = $subContractorDetails['address']['postocde'];
+								}
+								if (isset($subContractorDetails['address']['country'])) {
+									$newSubContractor['Address']['Country'] = $subContractorDetails['address']['country'];
+								}
+							} else {
+								return false;
+							}
+						}
+	 // Telephone number...
+						if (isset($subContractorDetails['telephone']) && preg_match('/[0-9\(\)\-\s]{1,35}/', $subContractorDetails['telephone'])) {
+							$newSubContractor['Telephone'] = $subContractorDetails['telephone'];
 						}
 
 						$this->_verifySubContractorList[] = $newSubContractor;
@@ -918,6 +920,7 @@ class HmrcCis extends GovTalk {
 											$package->text($this->_taxOfficeReference);
 										$package->endElement(); # Key
 									$package->endElement(); # Keys
+									$package->writeElement('PeriodEnd', date('Y-m-d'));
 									if (count($this->_agentDetails) > 0) {
 										$package->startElement('Agent');
 											if (isset($this->_agentDetails['reference'])) {
@@ -934,7 +937,9 @@ class HmrcCis extends GovTalk {
 											if (isset($this->_agentDetails['contact'])) {
 												$package->startElement('Contact');
 													$package->startElement('Name');
-														$package->writeElement('Ttl', $this->_agentDetails['contact']['name']['title']);
+														if (isset($this->_agentDetails['contact']['name']['title'])) {
+															$package->writeElement('Ttl', $this->_agentDetails['contact']['name']['title']);
+														}
 														$package->writeElement('Fore', $this->_agentDetails['contact']['name']['forename']);
 														$package->writeElement('Sur', $this->_agentDetails['contact']['name']['surname']);
 													$package->endElement(); # Name
@@ -951,7 +956,6 @@ class HmrcCis extends GovTalk {
 											}
 										$package->endElement(); # Agent
 									}
-									$package->writeElement('PeriodEnd', '2009-12-16');
 									$package->writeElement('DefaultCurrency', 'GBP');
 									if ($this->_generateIRmark === true) {
 										$package->startElement('IRmark');
