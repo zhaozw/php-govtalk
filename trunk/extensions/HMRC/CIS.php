@@ -710,7 +710,6 @@ class HmrcCis extends GovTalk {
 								$newSubContractor['Type'] = $subContractorDetails['tradertype'];
 							break;
 							default:
-							echo 13;
 								return false;
 							break;
 						}
