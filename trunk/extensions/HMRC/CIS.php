@@ -222,16 +222,21 @@ class HmrcCis extends GovTalk {
 	 * will return false.  Likewise, if this method has been set called and
 	 * addSubContractor() is called subsiquently, addSubContractor() will fail.
 	 *
+	 * @param boolean $status The status to set the nil return flag to. Defaults to true (nil return flag set).
 	 * @return boolean True if this instance is set as a nil return, false if it cannot be set.
 	 */
-	public function setNilReturn() {
+	public function setNilReturn($status = true) {
 	
-		if (count($this->_returnSubContractorList) == 0) {
-			$this->_nilReturn = true;
-			return true;
+		if ($status === true) {
+			if (count($this->_returnSubContractorList) == 0) {
+				$this->_nilReturn = true;
+			} else {
+				return false;
+			}
 		} else {
-			return false;
+			$this->_nilReturn = false;
 		}
+		return true;
 	
 	}
 	
@@ -436,6 +441,8 @@ class HmrcCis extends GovTalk {
 	 * @param string $contractorUtr Contractor's UTR.
 	 * @param string $contractorAoRef Contractor's Accounts Office Reference Number.
 	 * @param string $senderCapacity The capacity this return is being submitted under (Agent, Trust, Company, etc.).
+	 * @param boolean $inactivity A flag setting the inactivity flag in the XML. Defaults to false / no flag set.
+	 * @param boolean $informationCorrect A flag controlling the 'Information Correct Declaration' segment of the XML document. True for yes, false for no. Defaults to true.
 	 */
 	public function monthlyReturnRequest($returnPeriod, $contractorUtr, $contractorAoRef, $senderCapacity, $inactivity = false, $informationCorrect = true) {
 	
@@ -489,7 +496,9 @@ class HmrcCis extends GovTalk {
 											if (isset($this->_agentDetails['contact'])) {
 												$package->startElement('Contact');
 													$package->startElement('Name');
-														$package->writeElement('Ttl', $this->_agentDetails['contact']['name']['title']);
+														if (isset($this->_agentDetails['contact']['name']['title'])) {
+															$package->writeElement('Ttl', $this->_agentDetails['contact']['name']['title']);
+														}
 														$package->writeElement('Fore', $this->_agentDetails['contact']['name']['forename']);
 														$package->writeElement('Sur', $this->_agentDetails['contact']['name']['surname']);
 													$package->endElement(); # Name
@@ -617,7 +626,7 @@ class HmrcCis extends GovTalk {
 			$this->setMessageBody('');
 			
 			if ($this->sendMessage() && ($this->responseHasErrors() === false)) {
-
+			
 				$messageQualifier = (string) $this->_fullResponseObject->Header->MessageDetails->Qualifier;
 				if ($messageQualifier == 'response') {
 
@@ -634,8 +643,6 @@ class HmrcCis extends GovTalk {
 						$responseMessage[] = (string) $message;
 					}
 					$responseAcceptedTime = strtotime($successResponse->AcceptedTime);
-					
-					$this->sendDeleteRequest();
 
 					return array('message' => $responseMessage,
 					             'irmark' => $irMarkReceipt,
