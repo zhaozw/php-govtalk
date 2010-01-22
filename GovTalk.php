@@ -907,7 +907,6 @@ class GovTalk {
 		}
 		
 		$this->setMessageClass($messageClass);
-		$this->setMessageClass($messageClass);
 		$this->setMessageQualifier('request');
 		$this->setMessageFunction('list');
 		$this->setMessageCorrelationId('');
@@ -917,7 +916,8 @@ class GovTalk {
 			if ((string) $this->_fullResponseObject->Header->MessageDetails->Qualifier == 'response') {
 				$returnArray = array();
 				foreach ($this->_fullResponseObject->Body->StatusReport->StatusRecord AS $reportNode) {
-					$returnArray[] = array('timestamp' => strtotime((string) $reportNode->TimeStamp),
+					preg_match('#(\d{2})/(\d{2})/(\d{4}) (\d{2}):(\d{2}):(\d{2})#', $reportNode->TimeStamp, $timeChunks);
+					$returnArray[] = array('timestamp' => mktime($timeChunks[4], $timeChunks[5], $timeChunks[6], $timeChunks[2], $timeChunks[1], $timeChunks[3]),
 					                       'correlation' => (string) $reportNode->CorrelationID,
 					                       'transaction' => (string) $reportNode->TransactionID,
 					                       'status' => (string) $reportNode->Status);
@@ -926,7 +926,6 @@ class GovTalk {
 			} else {
 				return false;
 			}
-			exit;
 		} else {
 			return false;
 		}
@@ -951,6 +950,7 @@ class GovTalk {
 	public function sendMessage() {
 	
 		if ($this->_fullRequestString = $this->_packageGovTalkEnvelope()) {
+//var_dump($this->_fullRequestString); exit;
 			$this->_fullResponseString = $this->_fullResponseObject = null;
 		   if (function_exists('curl_init')) {
 				$curlHandle = curl_init($this->_govTalkServer);
