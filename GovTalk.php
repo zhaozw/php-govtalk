@@ -694,9 +694,10 @@ class GovTalk {
 	 * @param string $softwareVersion The version number of the software generating this route entry.
 	 * @param array $id An array of IDs (themselves array of 'type' and 'value') to add as array elements.
 	 * @param string $timestamp A timestamp representing the time this route processed the message (xsd:dateTime format).
+	 * @param boolean $force If true the route already exists check is not carried out and the target is added regardless of duplicates. (Defaults to false.)
 	 * @return boolean True if the route is valid and added, false if it's not valid (and therefore not added).
 	 */
-	public function addChannelRoute($uri, $softwareName = null, $softwareVersion = null, array $id = null, $timestamp = null) {
+	public function addChannelRoute($uri, $softwareName = null, $softwareVersion = null, array $id = null, $timestamp = null, $force = false) {
 
 		if (is_string($uri)) {
 			$newRoute = array('uri' => $uri);
@@ -718,8 +719,22 @@ class GovTalk {
 			} else {
 				$newRoute['timestamp'] = date('c');
 			}
-			$this->_messageChannelRouting[] = $newRoute;
-			return true;
+			if ($force === false) {
+				$matchedChannel = false;
+				foreach ($this->_messageChannelRouting AS $channelRoute) {
+					if (($channelRoute['product'] == $newRoute['product']) && ($channelRoute['version'] == $newRoute['version'])) {
+						$matchedChannel = true;
+						break;
+					}
+				}
+				if ($matchedChannel == false) {
+					$this->_messageChannelRouting[] = $newRoute;
+				}
+				return true;
+			} else {
+				$this->_messageChannelRouting[] = $newRoute;
+				return true;
+			}
 		} else {
 			return false;
 		}
