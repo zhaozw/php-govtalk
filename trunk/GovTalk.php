@@ -799,12 +799,18 @@ class GovTalk {
 	 * element.
 	 *
 	 * @param string $targetOrganisation The organisation to be added.
+	 * @param boolean $force If true the target already exists check is not carried out and the target is added regardless of duplicates. (Defaults to false.)
 	 * @return boolean True if the key is valid and added, false if it's not valid (and therefore not added).
 	 */
-	public function addTargetOrganisation($targetOrganisation) {
+	public function addTargetOrganisation($targetOrganisation, $force = false) {
 
 		if (($targetOrganisation != '') && (strlen($targetOrganisation) < 65)) {
-			$this->_messageTargetDetails[] = $targetOrganisation;
+			if (($force === false) && in_array($targetOrganisation, $this->_messageTargetDetails)) {
+				return true;
+			} else {
+				$this->_messageTargetDetails[] = $targetOrganisation;
+				return true;
+			}
 		} else {
 			return false;
 		}
