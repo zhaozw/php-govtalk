@@ -803,8 +803,8 @@ class HmrcCis extends GovTalk {
 										$newSubContractor['Address']['Line'][] = $addressLine;
 									}
 								}
-								if (isset($subContractorDetails['address']['postocde'])) {
-									$newSubContractor['Address']['PostCode'] = $subContractorDetails['address']['postocde'];
+								if (isset($subContractorDetails['address']['postcode'])) {
+									$newSubContractor['Address']['PostCode'] = $subContractorDetails['address']['postcode'];
 								}
 								if (isset($subContractorDetails['address']['country'])) {
 									$newSubContractor['Address']['Country'] = $subContractorDetails['address']['country'];
@@ -1086,8 +1086,6 @@ class HmrcCis extends GovTalk {
 							                               'verifcationnumber' => (string) $subContractor->VerificationNumber);
 						}
 					}
-
-					$this->sendDeleteRequest();
 
 					return array('message' => $responseMessage,
 					             'irmark' => $irMarkReceipt,
