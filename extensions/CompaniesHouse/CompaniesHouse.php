@@ -210,12 +210,12 @@ class CompaniesHouse extends GovTalk {
 						$officerSearchBody = $this->getResponseBody()->OfficerSearch;
 						foreach ($officerSearchBody->OfficerSearchItem AS $officerDetails) {
 							$thisOfficerDetails = array('id' => (string) $officerDetails->PersonID,
-							                            'title' => (string) $officerDetails->Title,
+							                            'title' => str_replace(',', '', (string) $officerDetails->Title),
 							                            'surname' => (string) $officerDetails->Surname,
 							                            'forename' => (string) $officerDetails->Forename,
 							                            'dob' => strtotime((string) $officerDetails->DOB),
 							                            'posttown' => (string) $officerDetails->PostTown,
-							                            'postcode' => (string) $officerDetails->Postcode);
+							                            'postcode' => (string) $officerDetails->PostCode);
 	                  $possibleOfficers[] = $thisOfficerDetails;
 							if (isset($officerDetails->SearchMatch) && ((string) $officerDetails->SearchMatch == 'NEAR')) {
 								$nearestOfficer = $thisOfficerDetails;
@@ -395,6 +395,18 @@ class CompaniesHouse extends GovTalk {
 					} else {
 						$officerDetails['forename'] = (string) $officerDetailsBody->Person->Forename;
 					}
+				}
+				if (isset($officerDetailsBody->Person->PersonAddress)) {
+					$officerDetails['address'] = array();
+					if (count($officerDetailsBody->Person->PersonAddress->AddressLine) > 1) {
+						foreach ($officerDetailsBody->Person->PersonAddress->AddressLine AS $addressLine) {
+							$officerDetails['address']['line'][] = (string) $addressLine;
+						}
+					} else {
+						$officerDetails['address']['line'] = (string) $officerDetailsBody->Person->PersonAddress->AddressLine;
+					}
+					$officerDetails['address']['posttown'] = (string) $officerDetailsBody->Person->PersonAddress->PostTown;
+					$officerDetails['address']['postcode'] = (string) $officerDetailsBody->Person->PersonAddress->Postcode;
 				}
 				
 	 // Appointments...
