@@ -101,6 +101,14 @@ class HmrcCis extends GovTalk {
 	 * @var boolean
 	 */
 	private $_generateIRmark = true;
+	
+	/**
+	 * Flag indicating if the delete requests should be made to the gateway on
+	 * sucessful reciept of declaration response.
+	 *
+	 * @var boolean
+	 */
+	private $_tidyGateway = false;
 
  /* Magic methods. */
 
@@ -141,11 +149,32 @@ class HmrcCis extends GovTalk {
 	 * requests to HMRC.
 	 *
 	 * @param boolean $flag True to turn on IRmark generator, false to turn it off.
+	 * @return boolean True on success, false on failure.
 	 */
 	public function setIRmarkGeneration($flag) {
 
 		if (is_bool($flag)) {
 			$this->_generateIRmark = $flag;
+			return true;
+		} else {
+			return false;
+		}
+
+	}
+	
+	/**
+	 * Turns the gateway tidying on or off (by default the gateway will not be
+	 * tidied). It's polite to tidy the gateway up when running live services,
+	 * but useful to leave responses on the server when developing.
+	 *
+	 * @param boolean $flag True to turn on IRmark generator, false to turn it off.
+	 * @return boolean True on success, false on failure.
+	 */
+	public function setGatewayTidy($flag) {
+
+		if (is_bool($flag)) {
+			$this->_tidyGateway = $flag;
+			return true;
 		} else {
 			return false;
 		}
@@ -643,6 +672,10 @@ class HmrcCis extends GovTalk {
 						$responseMessage[] = (string) $message;
 					}
 					$responseAcceptedTime = strtotime($successResponse->AcceptedTime);
+					
+					if ($this->_tidyGateway === true) {
+						$this->sendDeleteRequest();
+					}
 
 					return array('message' => $responseMessage,
 					             'irmark' => $irMarkReceipt,
@@ -1085,6 +1118,10 @@ class HmrcCis extends GovTalk {
 							                               'taxtreatment' => (string) $subContractor->TaxTreatment,
 							                               'verifcationnumber' => (string) $subContractor->VerificationNumber);
 						}
+					}
+					
+					if ($this->_tidyGateway === true) {
+						$this->sendDeleteRequest();
 					}
 
 					return array('message' => $responseMessage,
