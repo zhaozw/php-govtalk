@@ -479,6 +479,7 @@ class HmrcCis extends GovTalk {
 			if (isset($this->_taxOfficeNumber) && isset($this->_taxOfficeReference)) {
 
 				if (preg_match('/^\d{4}-\d{2}-05$/', $returnPeriod)) { # Return period
+					$contractorUtr = preg_replace('/\D/', '', $contractorUtr);
 					if ((is_numeric($contractorUtr) && (strlen($contractorUtr) == 10)) && preg_match('/[0-9]{3}P[A-Za-z][A-Za-z0-9]{8}/', $contractorAoRef)) { # UTR and AORef
 						$validCapacities = array('Individual', 'Company', 'Agent',
 						                         'Bureau', 'Partnership', 'Trust',
