@@ -1097,26 +1097,6 @@ class GovTalk {
  /* Protected methods. */
 
 	/**
-	 * Adds a new error to the end of the error array.
-	 *
-	 * @since 0.4
-	 * @see $_errorArray
-	 * @param string $errorCode An error code identifying this error being logged. While not globally unique, care should be taken to make this useful.
-	 * @param string $errorMessage An error message in plain text. This might be displayed to the user by applications, so should be something pretty descriptive. (Optional.)
-	 * @param string $function The function which generated this error. While this is optional, and might not be very helpful (depending on the error), it's easy to add with __FUNCTION__. (Optional.)
-	 * @return boolean This function always returns true.
-	 */
-	protected function logError($errorCode, $errorMessage = null, $function = null) {
-
-		$this->_errorArray[] = array('time' => microtime(true),
-		                             'code' => $errorCode,
-		                             'message' => $errorMessage,
-		                             'function' => $function);
-		return true;
-
-	}
-
-	/**
 	 * This method is designed to be over-ridden by extending classes which
 	 * require an alternative authentication algorithm.
 	 *
@@ -1150,6 +1130,26 @@ class GovTalk {
 	
 		return $package;
 	
+	}
+
+	/**
+	 * Adds a new error to the end of the error array.
+	 *
+	 * @since 0.4
+	 * @see $_errorArray
+	 * @param string $errorCode An error code identifying this error being logged. While not globally unique, care should be taken to make this useful.
+	 * @param string $errorMessage An error message in plain text. This might be displayed to the user by applications, so should be something pretty descriptive. (Optional.)
+	 * @param string $function The function which generated this error. While this is optional, and might not be very helpful (depending on the error), it's easy to add with __FUNCTION__. (Optional.)
+	 * @return boolean This function always returns true.
+	 */
+	protected function _logError($errorCode, $errorMessage = null, $function = null) {
+
+		$this->_errorArray[] = array('time' => microtime(true),
+		                             'code' => $errorCode,
+		                             'message' => $errorMessage,
+		                             'function' => $function);
+		return true;
+
 	}
 
 	/**
