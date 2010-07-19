@@ -4,7 +4,7 @@
 #  CIS.php
 #
 #  Created by Jonathon Wardman on 06-11-2009.
-#  Copyright 2009, Fubra Limited. All rights reserved.
+#  Copyright 2009 - 2010, Fubra Limited. All rights reserved.
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -597,22 +597,28 @@ class HmrcCis extends GovTalk {
 								$returnable['correlationid'] = $this->getResponseCorrelationId();
 								return $returnable;
 							} else {
+								$this->_logError(null, 'The submitted XML was rejected by the gateway because there were errors.', __FUNCTION__);
 								return false;
 							}
 
 						} else {
+							$this->_logError(null, 'Sender capacity is not valid.', __FUNCTION__);
 							return false;
 						}
 					} else {
+						$this->_logError(null, 'UTR and/or AORef are not in a valid format.', __FUNCTION__);
 						return false;
 					}
 				} else {
+					$this->_logError(null, 'Return period is not in a valid format.', __FUNCTION__);
 					return false;
 				}
 			} else {
+				$this->_logError(null, 'Tax office number or reference not set.', __FUNCTION__);
 				return false;
 			}
 		} else {
+			$this->_logError(null, '"Information correct" marker not set.', __FUNCTION__);
 			return false;
 		}
 
@@ -733,7 +739,7 @@ class HmrcCis extends GovTalk {
 	 * @param string $action A string representing the action to carry out for this sub-contractor. Must be either 'match' or 'verify'. Defaults to 'match'.
 	 * @return mixed The ID of the subcontrator added (base 0), or false if the subcontractor could not be added.
 	 **/
-	public function addVerifcationSubContractor(array $subContractorDetails, $engaged = true, $action = 'match') {
+	public function addVerificationSubContractor(array $subContractorDetails, $engaged = true, $action = 'match') {
 
 		if ($engaged == true) {
 			$newSubContractor = array();
@@ -869,16 +875,40 @@ class HmrcCis extends GovTalk {
 		}
 	
 	}
-	
+
+	/**
+	 * Alias of addVerificationSubContractor() maintained for backwards
+	 * compatibility. Deprecated.
+	 *
+	 * @see addVerificationSubContractor()
+	 */
+	public function addVerifcationSubContractor(array $subContractorDetails, $engaged = true, $action = 'match') {
+
+		return addVerificationSubContractor($subContractorDetails, $engaged, $action);
+
+	}
+
 	/**
 	 * Counts the number of subcontractors in the verifcation subcontractor
 	 * array.
 	 *
 	 * @return int The number of subcontractors in the verifcation subcontrator array.
 	 */
-	public function countVerifcationSubContractors() {
+	public function countVerificationSubContractors() {
 
 		return count($this->_verifySubContractorList);
+
+	}
+
+	/**
+	 * Alias of countVerificationSubContractors() maintained for backwards
+	 * compatibility. Deprecated.
+	 *
+	 * @see countVerificationSubContractors()
+	 */
+	public function countVerifcationSubContractors() {
+
+		return countVerificationSubContractors();
 
 	}
 	
@@ -889,7 +919,7 @@ class HmrcCis extends GovTalk {
 	 * @param int $subContractorId The ID of the subcontractor to be removed.
 	 * @return boolean True if the subcontractor was found and removed from the list.
 	 */
-	public function deleteVerifcationSubcontractor($subContractorId) {
+	public function deleteVerificationSubcontractor($subContractorId) {
 
 		if (is_int($subContractorId)) {
 			if (isset($this->_verifySubContractorList[$subContractorId])) {
@@ -903,6 +933,18 @@ class HmrcCis extends GovTalk {
 		}
 
 	}
+
+	/**
+	 * Alias of deleteVerificationSubcontractor() maintained for backwards
+	 * compatibility. Deprecated.
+	 *
+	 * @see deleteVerificationSubcontractor()
+	 */
+	public function deleteVerifcationSubcontractor($subContractorId) {
+
+		return deleteVerificationSubcontractor($subContractorId);
+
+	}
 	
 	/**
 	 * Resets the verifcation subcontractor list, removing all previously
@@ -910,10 +952,20 @@ class HmrcCis extends GovTalk {
 	 *
 	 * @return boolean This method always returns true.
 	 */
-	public function resetVerifcationSubcontractors() {
+	public function resetVerificationSubcontractors() {
 
 		$this->_verifySubContractorList = array();
 		return true;
+
+	}
+
+	/**
+	 * Alias of resetVerificationSubcontractors() maintained for backwards
+	 * compatibility. Deprecated.
+	 */
+	public function resetVerifcationSubcontractors() {
+
+		return resetVerificationSubcontractors();
 
 	}
 	
@@ -925,7 +977,7 @@ class HmrcCis extends GovTalk {
 	 * @param string $contractorAoRef Contractor's Accounts Office Reference Number.
 	 * @param string $senderCapacity The capacity this return is being submitted under (Agent, Trust, Company, etc.).
 	 */
-	public function verifcationRequest($contractorUtr, $contractorAoRef, $senderCapacity) {
+	public function verificationRequest($contractorUtr, $contractorAoRef, $senderCapacity) {
 
 		if (count($this->_verifySubContractorList) > 0) {
 			if (isset($this->_taxOfficeNumber) && isset($this->_taxOfficeReference)) {
@@ -1044,6 +1096,16 @@ class HmrcCis extends GovTalk {
 		}
 
 	}
+
+	/**
+	 * Alias of verificationRequest() maintained for backwards
+	 * compatibility. Deprecated.
+	 */
+	public function verifcationRequest($contractorUtr, $contractorAoRef, $senderCapacity) {
+
+		return verificationRequest($contractorUtr, $contractorAoRef, $senderCapacity);
+
+	}
 	
 	/**
 	 * Polls the Gateway for a submission response / error following a CIS
@@ -1073,7 +1135,7 @@ class HmrcCis extends GovTalk {
 	 * @param string $pollUrl The URL of the Gateway to poll.
 	 * @return mixed An array of details relating to the verifcation request, or false on failure.
 	 */
-	public function verifcationResponsePoll($correlationId = null, $pollUrl = null) {
+	public function verificationResponsePoll($correlationId = null, $pollUrl = null) {
 
 		if ($correlationId === null) {
 			$correlationId = $this->getResponseCorrelationId();
@@ -1144,6 +1206,16 @@ class HmrcCis extends GovTalk {
 		} else {
 			return false;
 		}
+
+	}
+
+	/**
+	 * Alias of verificationResponsePoll() maintained for backwards
+	 * compatibility. Deprecated.
+	 */
+	public function verifcationResponsePoll($correlationId = null, $pollUrl = null) {
+
+		return verificationResponsePoll($correlationId, $pollUrl);
 
 	}
 
