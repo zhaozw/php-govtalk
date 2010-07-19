@@ -4,7 +4,7 @@
 #  GovTalk.php
 #
 #  Created by Jonathon Wardman on 14-07-2009.
-#  Copyright 2009, Fubra Limited. All rights reserved.
+#  Copyright 2009 - 2010, Fubra Limited. All rights reserved.
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -170,6 +170,23 @@ class GovTalk {
 	 */
 	protected $_fullResponseObject;
 
+ /* Error handling variables. */
+
+	/**
+	 * An array containing all reported errors.
+	 *
+	 * The error array is stored and returned in the following format, one
+	 * one element for every error which has been reported:
+	 *   time => The unix timestamp (with microseconds) that this error was generated.
+	 *   code => A short error code. Defined by the function adding the error and not globally.
+	 *   message => A more descriptive error message. Again defined by the function adding the error, but hopefully more helpful. (Optional.)
+	 *   function => The name of the calling function. (Optional.)
+	 *
+	 * @since 0.4
+	 * @var array
+	 */
+	protected $_errorArray = array();
+
  /* System / internal variables. */
 
 	/**
@@ -204,6 +221,62 @@ class GovTalk {
 	}
 
  /* Public methods. */
+
+ /* Error handling funtions. */
+
+	/**
+	 * Returns the number of errors which have been logged in the error array
+	 * since this instance was initialised, or the error array was last reset.
+	 *
+	 * @since 0.4
+	 * @see logError(), clearErrors(), getErrors()
+	 * @return int The number of errors since the error array was last reset.
+	 */
+	public function errorCount() {
+
+		return count($this->_errorArray);
+
+	}
+
+	/**
+	 * Returns the full error array.
+	 *
+	 * @since 0.4
+	 * @see getLastError(), $_errorArray
+	 * @return array The complete error array.
+	 */
+	public function getErrors() {
+
+		return $this->_errorArray();
+
+	}
+
+	/**
+	 * Returns the last error pushed onto the error array.
+	 *
+	 * @since 0.4
+	 * @see getErrors(), $_errorArray
+	 * @return array The last element pushed onto the error array.
+	 */
+	public function getLastError() {
+
+		return end($this->_errorArray);
+
+	}
+
+	/**
+	 * Clears all errors out of the error array.
+	 *
+	 * @since 0.4
+	 * @see $_errorArray
+	 * @return boolean This function always returns true.
+	 */
+	public function clearErrors() {
+
+		$this->_errorArray = array();
+		return true;
+
+	}
 
  /* Logical / operational / conditional methods. */
 
@@ -1022,6 +1095,26 @@ class GovTalk {
 	}
 
  /* Protected methods. */
+
+	/**
+	 * Adds a new error to the end of the error array.
+	 *
+	 * @since 0.4
+	 * @see $_errorArray
+	 * @param string $errorCode An error code identifying this error being logged. While not globally unique, care should be taken to make this useful.
+	 * @param string $errorMessage An error message in plain text. This might be displayed to the user by applications, so should be something pretty descriptive. (Optional.)
+	 * @param string $function The function which generated this error. While this is optional, and might not be very helpful (depending on the error), it's easy to add with __FUNCTION__. (Optional.)
+	 * @return boolean This function always returns true.
+	 */
+	protected function logError($errorCode, $errorMessage = null, $function = null) {
+
+		$this->_errorArray[] = array('time' => microtime(true),
+		                             'code' => $errorCode,
+		                             'message' => $errorMessage,
+		                             'function' => $function);
+		return true;
+
+	}
 
 	/**
 	 * This method is designed to be over-ridden by extending classes which
