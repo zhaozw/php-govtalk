@@ -4,7 +4,7 @@
 #  GovTalk.php
 #
 #  Created by Jonathon Wardman on 14-07-2009.
-#  Copyright 2009 - 2010, Fubra Limited. All rights reserved.
+#  Copyright 2009 - 2011, Fubra Limited. All rights reserved.
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * departments. Generates valid GovTalk envelopes for agreed version 2.0.
  *
  * @author Jonathon Wardman
- * @copyright 2009, Fubra Limited
+ * @copyright 2009 - 2011, Fubra Limited
  * @licence http://www.gnu.org/licenses/gpl-3.0.txt GNU General Public License
  */
 class GovTalk {
@@ -1044,7 +1044,6 @@ class GovTalk {
 	public function sendMessage() {
 	
 		if ($this->_fullRequestString = $this->_packageGovTalkEnvelope()) {
-//var_dump($this->_fullRequestString); exit;
 			$this->_fullResponseString = $this->_fullResponseObject = null;
 		   if (function_exists('curl_init')) {
 				$curlHandle = curl_init($this->_govTalkServer);
@@ -1064,18 +1063,20 @@ class GovTalk {
 					return false;
 				}
 			}
-			
 			if ($gatewayResponse !== false) {
 				$this->_fullResponseString = $gatewayResponse;
 				$validXMLResponse = false;
 				if ($this->_messageTransformation == 'XML') {
 					if (isset($this->_additionalXsiSchemaLocation) && ($this->_schemaValidation == true)) {
-						if (file_exists($this->_additionalXsiSchemaLocation)) {
+						$xsiSchemaHeaders = @get_headers($this->_additionalXsiSchemaLocation);
+						if ($xsiSchemaHeaders[0] != 'HTTP/1.1 404 Not Found') {
 							$validate = new DOMDocument();
 							$validate->loadXML($this->_fullResponseString);
 							if ($validate->schemaValidate($this->_additionalXsiSchemaLocation)) {
 								$validXMLResponse = true;
 							}
+						} else {
+							return false;
 						}
 					} else {
 						$validXMLResponse = true;

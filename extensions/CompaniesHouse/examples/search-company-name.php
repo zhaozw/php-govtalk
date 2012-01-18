@@ -28,6 +28,7 @@ if (isset($_GET['companyname'])) {
 	} else {
 	 // No companies found / error occured...
 		echo 'No companies found for \''.$_GET['companyname'].'\'.';
+		var_dump($companiesHouse->getFullXMLResponse());
 	}
 	
 } else {

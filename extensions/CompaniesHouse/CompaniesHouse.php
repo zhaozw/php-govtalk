@@ -52,7 +52,7 @@ class CompaniesHouse extends GovTalk {
 	public function __construct($govTalkSenderId, $govTalkPassword) {
 	
 		parent::__construct('http://xmlgw.companieshouse.gov.uk/v1-0/xmlgw/Gateway', $govTalkSenderId, $govTalkPassword);
-		$this->setSchemaLocation('http://xmlgw.companieshouse.gov.uk/v1-0/schema/Egov_ch-v2-0.xsd');
+		$this->setSchemaLocation('http://xmlgw.companieshouse.gov.uk/v1-1/schema/Egov_ch-v2-0.xsd');
 		$this->setSchemaValidation(false);
 		$this->setMessageAuthentication('alternative');
 		$this->setMessageQualifier('request');
